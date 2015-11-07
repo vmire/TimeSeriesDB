@@ -1,4 +1,4 @@
-package com.mireau.homeAutomation.timeseries;
+package com.mireau.timeseries;
 
 import java.io.File;
 import java.io.IOException;

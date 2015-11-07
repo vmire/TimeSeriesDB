@@ -1,4 +1,4 @@
-package com.mireau.homeAutomation.timeseries;
+package com.mireau.timeseries;
 
 import java.io.EOFException;
 import java.io.File;
@@ -13,15 +13,15 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /** 
- * Enregistrement des données brutes.
- * Peut être scindé en plusieurs fichiers (TODO)
+ * Enregistrement des donnÃ©es brutes.
+ * Peut Ãªtre scindÃ© en plusieurs fichiers (TODO)
  * Format:
- *   En tête:
+ *   En tÃªte:
  *     aucun
  *   Chaque enregistrement : 8 bytes 
  *     timestamp (secondes) : int  (4 bytes/32bits/unsigned -> 31bits) : 68 ans (2038)
  *     valeur (signed)      : float(4 bytes)
- *     pas de caractère de séparation
+ *     pas de caractÃ¨re de sÃ©paration
  */
 public class RawDataSerie {
 	
@@ -43,7 +43,7 @@ public class RawDataSerie {
 		this.id = id;
 	}
 	
-	private File getFile(){
+	protected File getFile(){
 		String filename = "/ts_"+this.id+".rts";
 		return new File(this.directory,filename);
 	}
@@ -58,7 +58,7 @@ public class RawDataSerie {
 	}
 	
 	/**
-	 * Fourni la dernière valeur
+	 * Fourni la derniÃ¨re valeur
 	 * @return
 	 * @throws IOException 
 	 */
@@ -67,8 +67,8 @@ public class RawDataSerie {
 	}
 	
 	/**
-	 * Fourni la dernière valeur
-	 * Le curseur est positionné en fin de dernière valeur (pret à écrire si ouvert en rw)
+	 * Fourni la derniÃ¨re valeur
+	 * Le curseur est positionnÃ© en fin de derniÃ¨re valeur (pret Ã  Ã©crire si ouvert en rw)
 	 * @return
 	 * @throws IOException 
 	 */
@@ -77,7 +77,7 @@ public class RawDataSerie {
 			File file = getFile();
 			long len = file.length();
 			if(len>=DATA_LEN){
-				//Il y a des données dans le fichier : lecture
+				//Il y a des donnÃ©es dans le fichier : lecture
 				boolean closeFileFlag = false;
 				if(rdf==null){
 					rdf = new RandomAccessFile(file,"r");
@@ -86,7 +86,7 @@ public class RawDataSerie {
 				long pos = len - DATA_LEN;
 				long mod = pos % DATA_LEN;
 				if(mod != 0){
-					logger.warning("Taille de fichier incohérence ("+len/DATA_LEN+"x"+DATA_LEN+", reste "+mod+"). retour à "+(len-mod));
+					logger.warning("Taille de fichier incoherence ("+len/DATA_LEN+"x"+DATA_LEN+", reste "+mod+"). retour a "+(len-mod));
 					pos -= mod;
 				}
 				rdf.seek(pos);
@@ -109,29 +109,29 @@ public class RawDataSerie {
 		File file = getFile();
 		RandomAccessFile rdf = new RandomAccessFile(file,"rw");
 		
-		//On vérifie que la longueur est cohérente
+		//On vÃ©rifie que la longueur est cohÃ©rente
 		long len = rdf.length();
 		logger.info(file.getName()+" len="+len);
 		if(len>0){
 			int mod = (int)(len % DATA_LEN);
 			if(mod != 0){
-				logger.warning("Taille de fichier incohérence ("+len/DATA_LEN+"x"+DATA_LEN+", reste "+mod+"). retour à "+(len-mod));
+				logger.warning("Taille de fichier incoherence ("+len/DATA_LEN+"x"+DATA_LEN+", reste "+mod+"). retour a "+(len-mod));
 				len  = len - mod;
 			}
 			
 			if(timestamp < getLast(rdf).timestamp){
-				logger.warning("la nouvelle valeur antérieure à la dernière (prev:"+sdf.format(new Date((long)last.timestamp*1000))+" new:"+sdf.format(new Date((long)timestamp*1000))+")");
+				logger.warning("la nouvelle valeur anterieure a la derniere (prev:"+sdf.format(new Date((long)last.timestamp*1000))+" new:"+sdf.format(new Date((long)timestamp*1000))+")");
 			}
 			
 			//Positionnement en fin de fichier
 			rdf.seek(len);
 		}
 		
-		//On écrit l'enregistrement
+		//On Ã©crit l'enregistrement
 		if(timestamp>Integer.MAX_VALUE){
-			logger.warning("timestamp tronqué : "+timestamp+"/"+(int)timestamp);
+			logger.warning("timestamp tronquÃ© : "+timestamp+"/"+(int)timestamp);
 		}
-		logger.fine(sdf.format(new Date(timestamp*1000))+" : "+value+" (write)");
+		logger.fine("write: "+value+"("+sdf.format(new Date(timestamp*1000))+")");
 		rdf.writeInt((int)timestamp);
 		rdf.writeFloat(value);
 		
@@ -139,7 +139,7 @@ public class RawDataSerie {
 	}
 	
 	/**
-	 * Parcours la liste des enregistrement sur une période
+	 * Parcours la liste des enregistrement sur une pÃ©riode
 	 * 
 	 * @param beginTimestamp
 	 * @param endTimestamp
@@ -151,7 +151,7 @@ public class RawDataSerie {
 	}
 	
 	/**
-	 * Représente une entrée dans la série
+	 * ReprÃ©sente une entrÃ©e dans la sÃ©rie
 	 */
 	public class Entry{
 		long timestamp;
@@ -162,7 +162,7 @@ public class RawDataSerie {
 	}
 	
 	/**
-	 * Classe pour la lecture séquentielle de la série
+	 * Classe pour la lecture sÃ©quentielle de la sÃ©rie
 	 */
 	public class RDSIterator implements Iterator<Entry>{
 
@@ -172,7 +172,7 @@ public class RawDataSerie {
 		Long length = null;
 		
 		Entry next = null;
-		boolean flagNext;	//Indique si la valeur suivante a été extraite (avant de la retourner)
+		boolean flagNext;	//Indique si la valeur suivante a Ã©tÃ© extraite (avant de la retourner)
 		
 		/**
 		 * 
@@ -187,15 +187,15 @@ public class RawDataSerie {
 			this.end = endTimestamp;
 			
 			if(begin!=null && begin>0){
-				//Il y a un timestamp de début spécifié
-				//Recherche du point de départ dans le fichier
+				//Il y a un timestamp de dÃ©but spÃ©cifiÃ©
+				//Recherche du point de dÃ©part dans le fichier
 				try {
 					long p1 = 0;			//position limite de gauche
 					long p2 = raf.length();	//position limite de droite
 					while(true){
 						if(p2-p1 <= DATA_LEN){
 							//On ne peut pas plus raffiner : le timestamp ne tombe pas exactement
-							//On prend le timestamp supérieur
+							//On prend le timestamp supÃ©rieur
 							raf.seek(p2);
 							break;
 						}
@@ -204,17 +204,17 @@ public class RawDataSerie {
 						raf.seek(mpos);
 						int t = raf.readInt();
 						if(t==begin){
-							//On a trouvé le timestamp exact
-							//On ramène le curseur sur cette position
+							//On a trouvÃ© le timestamp exact
+							//On ramÃ¨ne le curseur sur cette position
 							raf.seek(mpos);
 							break;
 						}
 						else if(t>begin){
-							//c'est à gauche
+							//c'est Ã  gauche
 							p2 = mpos;
 						}
 						else{
-							//c'est à droite
+							//c'est Ã  droite
 							p1 = mpos;
 						}
 					}

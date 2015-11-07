@@ -1,4 +1,4 @@
-package com.mireau.homeAutomation.timeseries;
+package com.mireau.timeseries;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,13 +15,13 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 	double stepSum;
 	/** nombre de valeurs pour le step en cours (pour le type AVERAGE uniquement)*/
 	int stepNb;
-	/** dernière valeur sur le step en cours*/
+	/** derniÃ¨re valeur sur le step en cours*/
 	Float stepLast = null;
 	/** valeur mini sur le step en cours*/
 	Float stepMin = null;
 	/** valeur maxi sur le step en cours*/
 	Float stepMax = null;
-	/** timestamp du début de step en cours */
+	/** timestamp du debut de step en cours */
 	Long stepTimestamp;
 	
 	
@@ -45,7 +45,7 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 	}
 	
 	/**
-	 * Enregistrement des données sur le step en cours
+	 * Enregistrement des donnÃ©es sur le step en cours
 	 * @throws IOException 
 	 */
 	protected synchronized void writeCurrentStepData(RandomAccessFile raf) throws IOException{
@@ -69,7 +69,7 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 		stepMax = null;
 	} 
 	/**
-	 * Lecture des données sur le step en cours
+	 * Lecture des donnï¿½es sur le step en cours
 	 */
 	protected void readCurrentStepData(RandomAccessFile adf) throws IOException{
 		adf.seek(CUR_STEP_RECORD_POS);
@@ -88,16 +88,17 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 	}
 	
 	/**
-	 * Longueur des données du step en cours écrites dans le fichier archive
+	 * Longueur des donnï¿½es du step en cours ï¿½crites dans le fichier archive
 	 */
 	protected int currentStepDataLength(){
 		return CURRENT_STEP_DATA_LENGTH;
 	}
 	
 	/**
-	 * Construit l'objet ArchivePoint correspondant aux valeurs enregistrées sur le step en cours
+	 * Construit l'objet ArchivePoint correspondant aux valeurs enregistrÃ©es sur le step en cours
 	 */
 	protected ArchivePoint currentStepPoint(){
+		if(this.stepNb==0) return null;
 		AverageArchivePoint point = new AverageArchivePoint();
 		point.value = (float)(this.stepSum / this.stepNb);
 		point.min = this.stepMin;
@@ -113,36 +114,25 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 	 * @throws IOException
 	 */
 	public void post(long timestamp, float value) throws IOException{
-		
-		if(lastTimestamp==null || lastTimestamp == 0){
-			//Il n'y a encore rien dans cette archive
-			lastTimestamp = getTimestampOrigine(timestamp);
-			stepTimestamp = lastTimestamp;
-			
-			RandomAccessFile adf = openFile("rw");
-			
-			adf.seek(8);	//TODO à ne pas coder en dur
-			adf.writeLong(lastTimestamp);
-			
-			releaseFile(adf);
+		if(stepTimestamp!=null && stepTimestamp>0 && timestamp < stepTimestamp){
+			logger.warning("Nouvelle valeur anterieure au step en cours (cur step:"+sdf.format(new Date(stepTimestamp*1000))+" new value:"+sdf.format(new Date(timestamp*1000))+")");
 		}
 		
-		if(stepTimestamp!=null && timestamp < stepTimestamp){
-			logger.warning("Nouvelle valeur antérieure au step en cours (cur step:"+sdf.format(new Date(stepTimestamp*1000))+" new value:"+sdf.format(new Date(timestamp*1000))+")");
+		if(stepTimestamp==null || stepTimestamp==0){
+			//Calcul du timestamp d'origine de l'archive : arrondi au step immÃ©diatement infÃ©rieur
+			stepTimestamp = getTimestampOrigine(timestamp);
 		}
-		
-		//Ecriture du step en cours si nécessaire
-		if(stepTimestamp!=null && timestamp >= stepTimestamp+step){
+		else if(timestamp >= stepTimestamp+step){
 			/*
-			 * Changement de step
-			 */
+			 * Changement de step -> Ã©criture
+			 */	
 			this.writePoint();
-			
+		
 			this.stepSum = 0;
 			this.stepNb = 0;
 			this.stepMin = null;
 			this.stepMax = null;
-			
+		
 			long nbSteps = (timestamp - lastTimestamp)/step;
 			this.stepTimestamp = this.lastTimestamp + nbSteps*step;
 			logger.fine("nouveau step : "+sdf.format(new Date(stepTimestamp*1000)));
@@ -155,7 +145,7 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 		if(this.stepMin==null || value < this.stepMin) this.stepMin = value;
 		if(this.stepMax==null || value > this.stepMax) this.stepMax = value;
 		
-		logger.fine("last="+stepLast+" nb="+stepNb+" sum="+stepSum);
+		logger.fine("add to current step : "+stepLast+" nb="+stepNb+" sum="+stepSum);
 		
 	}
 	
@@ -172,17 +162,30 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 		RandomAccessFile adf = openFile("rw");
 		
 		long len = adf.length();
-		adf.seek(len);
 		
-		if(stepTimestamp == lastTimestamp){
+		/*
+		 * Premier enregistrement
+		 */
+		if(len<HEADER1_LEN + AverageArchiveDataSerie.CURRENT_STEP_DATA_LENGTH){	
+			adf.seek(8);	//TODO ne pas coder en dur si possible: correspond Ã  l'enregistrement de step+type
+			//Timestamp de dÃ©but de l'archive
+			adf.writeLong(stepTimestamp);
+			for(int i=0;i<currentStepDataLength();i++) adf.write((byte)0);
+			len = adf.length();
+		}
+		else{
+			adf.seek(len);
+		}
+		
+		if(lastTimestamp!=null && stepTimestamp == lastTimestamp){
 			/*
-			 * On écrase la dernière valeur qui correspond au même step. (C'est autorisé)
+			 * On Ã©crase la derniÃ¨re valeur qui correspond au meme step. (C'est autorise)
 			 */
 			logger.fine("override last value");
 			adf.seek(adf.getFilePointer() - ENREG_LEN);
 		}
-		else if(stepTimestamp > lastTimestamp+step){
-			//On remplit éventuellement les steps sans valeur
+		else if(lastTimestamp!=null && stepTimestamp > lastTimestamp+step){
+			//On remplit eventuellement les steps sans valeur
 			int stepsToSkip = (int)(stepTimestamp - lastTimestamp - step)/step;
 			logger.fine("skip "+stepsToSkip+" steps");
 			//Il y a des steps vides
@@ -194,14 +197,14 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 			}
 		}
 		
-		//On écrit la nouvelle valeur
+		//On ecrit la nouvelle valeur
 		logger.fine("flush step "+sdf.format(new Date(point.timestamp*1000))+": value="+point.value);
 		adf.writeBoolean(true);
 		adf.writeFloat(point.value);
 		adf.writeFloat(point.min);
 		adf.writeFloat(point.max);
 		
-		//Mise à jour du timestamp de dernier enregistrement
+		//Mise a jour du timestamp de dernier enregistrement
 		this.lastTimestamp = stepTimestamp;
 		
 		//On relache le fichier
@@ -209,7 +212,7 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 	}
 	
 	/**
-	 * Lit le point dans le fichier, à la position du curseur
+	 * Lit le point dans le fichier, a la position du curseur
 	 * @throws IOException 
 	 */
 	protected ArchivePoint readPoint(RandomAccessFile raf) throws IOException{
@@ -223,7 +226,7 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 	}
 	
 	/**
-	 * Classe qui représente un point de l'archive
+	 * Classe qui reprÃ©sente un point de l'archive
 	 */
 	public class AverageArchivePoint extends ArchivePoint{
 		Float min = null;

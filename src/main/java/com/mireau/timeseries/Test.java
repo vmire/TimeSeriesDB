@@ -1,4 +1,4 @@
-package com.mireau.homeAutomation.timeseries;
+package com.mireau.timeseries;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -17,9 +17,9 @@ import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
-import com.mireau.homeAutomation.timeseries.ArchiveDataSerie.ArchivePoint;
-import com.mireau.homeAutomation.timeseries.ArchiveDataSerie.Type;
-import com.mireau.homeAutomation.timeseries.RawDataSerie.Entry;
+import com.mireau.timeseries.ArchiveDataSerie.ArchivePoint;
+import com.mireau.timeseries.ArchiveDataSerie.Type;
+import com.mireau.timeseries.RawDataSerie.Entry;
 
 
 public class Test {
@@ -57,7 +57,7 @@ public class Test {
 			if (file.exists()) {
 				is = new FileInputStream(file);
 			} else {
-				// conf par défaut
+				// conf par dÃ©faut
 				is = Test.class.getClassLoader().getResourceAsStream(
 						Test.class.getPackage().getName().replaceAll("\\.", "/") + "/logging.properties");
 			}
@@ -85,9 +85,14 @@ public class Test {
 					}
 					String dbName = terms[1];
 					ts = new TimeSeriesDB(dbName,".");
+					
+					printStatus(ts);
 				}
 				else if ("close".equalsIgnoreCase(verb)) {
 					ts.close();
+				}
+				else if ("status".equalsIgnoreCase(verb)) {
+					printStatus(ts);
 				}
 				else if ("build".equalsIgnoreCase(verb)) {
 					ts.buildArchive(15*60, Type.AVERAGE);
@@ -102,7 +107,7 @@ public class Test {
 						ts.post((new Date()).getTime()/1000, value);
 					}
 					catch(NumberFormatException e){
-						System.out.println("nombre malformé");
+						System.out.println("nombre malformÃ©");
 						continue;
 					}
 				}
@@ -156,6 +161,25 @@ public class Test {
 			System.out.println(msg);
 		System.out.print(">");
 	}
+	
+	public static void printStatus(TimeSeriesDB ts) throws IOException{
+		SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/Y-HH:mm");
+		System.out.println("raw data file : "+ts.rawDS.getFile().getName());
+		if(ts.archives.isEmpty()){
+			System.out.println("no archive");
+		}
+		else{
+			System.out.println("archives :");
+			for (ArchiveDataSerie archive : ts.archives) {
+				System.out.println("   "+archive.archiveFile+" type:"+archive.type()+" step:"+archive.step/60+"min debut:"+sdf.format(new Date(archive.t0*1000)));
+				List<ArchivePoint> l = archive.getLastPoints(3);
+				for (ArchivePoint p : l) {
+					System.out.println("     "+sdf.format(new Date(p.timestamp*1000))+" : "+p.value);
+				}
+			}
+		}
+	}
+	
 	
 	public static void printThreadDump(PrintStream ps) {
 		final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();

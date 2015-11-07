@@ -1,3 +1,4 @@
 /target
 *.ats
 *.rts
+/test-tmp/

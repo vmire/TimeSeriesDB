@@ -1,4 +1,4 @@
-package com.mireau.homeAutomation.timeseries;
+package com.mireau.timeseries;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -13,20 +13,20 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
 
-import com.mireau.homeAutomation.timeseries.RawDataSerie.Entry;
+import com.mireau.timeseries.RawDataSerie.Entry;
 
 /** 
- * Enregistrement des données d'archives consolidées sur un périodicité fixée
+ * Enregistrement des donnÃ©es d'archives consolidÃ©es sur un pÃ©riodicitÃ© fixÃ©e
  * L'archive est contenu dans un seul fichier
  * 
  * Format:
  * 
- *   En tête commun: (16 bytes)
+ *   En tÃªte commun: (16 bytes)
  *     step      int   / 4 bytes
  *     type      int   / 4 bytes (1:AVERAGE, 2:LAST, 3:CUMUL)
  *     timestamp long  / 8 bytes
  *     
- *   Données sur le step en cours (28 bytes)
+ *   DonnÃ©es sur le step en cours (28 bytes)
  *     stepTimestamp   / 8 bytes : timestamp du step en cours
  *     stepSum   double/ 8 bytes : Somme des valeurs en cours
  *     stepNb    int   / 4 bytes : Nombre de valeurs en cours
@@ -62,7 +62,7 @@ public abstract class ArchiveDataSerie {
 	
 	String id;
 	
-	/** espacement des points dans la série (secondes) */
+	/** espacement des points dans la sÃ©rie (secondes) */
 	Integer step = null;
 	
 	static Logger logger = Logger.getLogger(ArchiveDataSerie.class.getName());
@@ -71,7 +71,7 @@ public abstract class ArchiveDataSerie {
 	File archiveFile;
 	
 	/**
-	 * timestamp du dernier step enregistré (terminé)
+	 * timestamp du dernier step enregistrÃ© (terminÃ©)
 	 */
 	Long t0 = null;
 	Long lastTimestamp = null;
@@ -123,18 +123,18 @@ public abstract class ArchiveDataSerie {
 	
 	/**
 	 * Initialise une nouvelle archive.
-	 * Création du fichier. Ecriture du premier en-tete
+	 * CrÃ©ation du fichier. Ecriture du premier en-tete
 	 * 
 	 * @throws IOException
 	 * @throws ArchiveInitException
 	 */
 	protected synchronized void newArchive() throws IOException, ArchiveInitException{
-		if(step==null) throw new ArchiveInitException("step non initialisé");
+		if(step==null) throw new ArchiveInitException("step non initialisÃ©");
 		
 		/*
 		 * Nouveau fichier - On l'initialise
 		 */
-		//On vérifie que 'step' est cohérent : nombre entier de step dans une heure
+		//On vÃ©rifie que 'step' est cohÃ©rent : nombre entier de step dans une heure
 		if(step!=60 
 			&& step!=   120	//2 min
 			&& step!=   300	//5 min
@@ -160,7 +160,7 @@ public abstract class ArchiveDataSerie {
 		Integer t = encodeType();
 		adf.writeInt(t);
 		
-		//Timestamp à 0
+		//Timestamp a 0
 		adf.writeLong(0);
 		
 		
@@ -183,7 +183,7 @@ public abstract class ArchiveDataSerie {
 		logger.info("Init archive : "+archiveFile.getName());
 		
 		if(!archiveFile.exists() || archiveFile.length()==0){
-			//Le fichier archive n'existe pas. On la crée
+			//Le fichier archive n'existe pas. On la crÃ©e
 			newArchive();
 			return;
 		}
@@ -196,7 +196,7 @@ public abstract class ArchiveDataSerie {
 		 */
 		if(len<HEADER1_LEN){
 			//Il faut minimum 8 byte pour l'en tete (step + type)
-			throw new ArchiveInitException("Taille du fichier archive incorrecte ("+len+"): inférieure à la taille de l'en-tête");
+			throw new ArchiveInitException("Taille du fichier archive incorrecte ("+len+"): infÃ©rieure a la taille de l'en-tete");
 		}
 		
 		RandomAccessFile adf = openFile("r");
@@ -210,17 +210,17 @@ public abstract class ArchiveDataSerie {
 		 * Type
 		 */
 		int t = adf.readInt();
-		if(decodeType(t) != this.type()) throw new ArchiveInitException("incohérence de type d'archive");
+		if(decodeType(t) != this.type()) throw new ArchiveInitException("incoherence de type d'archive");
 		
 		/*
-		 * Timestamp de début
+		 * Timestamp de debut
 		 */
 		this.t0 = adf.readLong();
 		
 		logger.fine("start: "+sdf.format(new Date(t0*1000))+" step:"+step);
 		
 		/*
-		 * Valeurs initialisées : timestamp + valeurs sur le step en cours
+		 * Valeurs initialisees : timestamp + valeurs sur le step en cours
 		 */
 		long nbEnreg = 0;
 		this.lastTimestamp = null;
@@ -240,7 +240,7 @@ public abstract class ArchiveDataSerie {
 			
 			long mod = (len-firstPos) % recordLen;
 			if(mod != 0){
-				logger.warning("Taille de fichier anormale ("+len+"). Retour à "+(len-mod));
+				logger.warning("Taille de fichier anormale ("+len+"). Retour a "+(len-mod));
 				len -= mod;
 			}
 			
@@ -272,25 +272,31 @@ public abstract class ArchiveDataSerie {
 	
 	
 	/**
-	 * Détermine un timestamp d'origine, calé sur une valeur "ronde" en fonction du step
+	 * DÃ©termine un timestamp d'origine, calÃ© sur le step immÃ©diatement infÃ©rieur au timestamp
 	 * @param timestamp
 	 * @return
 	 */
 	protected long getTimestampOrigine(long t){
-		//Choix d'un timestamp origine en fonction du step
 		Calendar cal = GregorianCalendar.getInstance();
-		//On positionne au début de l'heure en cours
+		cal.setTimeInMillis(t*1000);
+		//On positionne au dÃ©but de l'heure en cours
 		cal.set(Calendar.SECOND, 0);
 		cal.set(Calendar.MINUTE, 0);
 		if(step>3600){
-			//On positionne au début du jour en cours
+			//On positionne au dÃ©but du jour en cours
 			cal.set(Calendar.HOUR_OF_DAY, 0);
 		}
 		if(step>86400){
-			//On positionne au début de la semaine
+			//On positionne au dÃ©but de la semaine
 			cal.set(Calendar.DAY_OF_WEEK, 0);
 		}
-		return cal.getTimeInMillis() / 1000;
+		long result = cal.getTimeInMillis() / 1000;
+		
+		while(result + step <= t){
+			result += step;
+		}
+		
+		return result;
 	}
 	
 	private Integer encodeType(){
@@ -313,7 +319,7 @@ public abstract class ArchiveDataSerie {
 	}
 	
 	/**
-	 * Ferme une archive en enregistrant les valeurs reçues sur le step en cours
+	 * Ferme une archive en enregistrant les valeurs reÃ§ues sur le step en cours
 	 * 
 	 * @throws IOException
 	 */
@@ -324,7 +330,7 @@ public abstract class ArchiveDataSerie {
 	}
 	
 	/**
-	 * Ecriture des données sur le step en cours
+	 * Ecriture des donnÃ©es sur le step en cours
 	 */
 	protected abstract void writeCurrentStepData(RandomAccessFile raf) throws IOException;
 	
@@ -334,17 +340,17 @@ public abstract class ArchiveDataSerie {
 	protected abstract void resetCurrentStepData();
 	
 	/**
-	 * Lecture des données sur le step en cours
+	 * Lecture des donnÃ©es sur le step en cours
 	 */
 	protected abstract void readCurrentStepData(RandomAccessFile adf) throws IOException;
 	
 	/**
-	 * Longueur des données du step en cours écrites dans le fichier archive
+	 * Longueur des donnÃ©es du step en cours Ã©crites dans le fichier archive
 	 */
 	protected abstract int currentStepDataLength();
 	
 	/**
-	 * Lit le point dans le fichier, à la position du curseur
+	 * Lit le point dans le fichier, Ã  la position du curseur
 	 * @throws IOException 
 	 */
 	protected abstract ArchivePoint readPoint(RandomAccessFile raf) throws IOException;
@@ -363,7 +369,7 @@ public abstract class ArchiveDataSerie {
 	public abstract void post(long timestamp, float value) throws IOException;
 	
 	/**
-	 * Construit l'objet ArchivePoint correspondant aux valeurs enregistrées sur le step en cours
+	 * Construit l'objet ArchivePoint correspondant aux valeurs enregistrÃ©es sur le step en cours
 	 */
 	protected abstract ArchivePoint currentStepPoint();
 	
@@ -373,12 +379,12 @@ public abstract class ArchiveDataSerie {
 	 * 
 	 */
 	public void build(Iterator<Entry> iter) throws IOException, ArchiveInitException{
-		//On tronque le fichier au timestamp correspondant à la première valeur.
+		//On tronque le fichier au timestamp correspondant a la premiere valeur.
 		if(!iter.hasNext()) return;
 		Entry e = iter.next();
 		if(t0!=null && t0>0){
 			if(e.timestamp < lastTimestamp + getRecordLen()){
-				//timestamp dans l'archive ou antérieur : on tronque
+				//timestamp dans l'archive ou anterieur : on tronque
 				Long pos = getTimestampPosition(e.timestamp);
 				RandomAccessFile raf = openFile("rw");
 				raf.setLength(pos);
@@ -393,11 +399,12 @@ public abstract class ArchiveDataSerie {
 			}
 		}
 		
-		//On poste la première valeur déja récupérée
+		//On poste la premiere valeur deja recuperee
 		this.post(e.timestamp, e.value);
 		
 		//Ajout des valeurs
 		while(iter.hasNext()){
+			e = iter.next();
 			this.post(e.timestamp, e.value);
 		}
 	}
@@ -427,7 +434,7 @@ public abstract class ArchiveDataSerie {
 		
 		long len = this.archiveFile.length();
 		
-		//Positionnement sur la première valeur
+		//Positionnement sur la premiere valeur
 		Long startIdx = getTimestampPosition(startTimestamp);
 		
 		//Fin
@@ -437,6 +444,9 @@ public abstract class ArchiveDataSerie {
 			RandomAccessFile raf = openFile("r");
 			raf.seek(startIdx);
 			for(long t=startTimestamp;t<endTimestamp;t+=step){
+				startIdx+=getRecordLen();
+				System.out.println("pos="+startIdx);
+				
 				ArchivePoint point = readPoint(raf);
 				point.timestamp = t;
 				result.add(point);
@@ -445,7 +455,7 @@ public abstract class ArchiveDataSerie {
 		}
 		
 		if(endTimestamp==null || lastTimestamp==null || endTimestamp >= lastTimestamp){
-			//Ajout de la valeur en cours (non enregistrée dans le fichier
+			//Ajout de la valeur en cours (non enregistree dans le fichier
 			ArchivePoint point = this.currentStepPoint();
 			if(point!=null && point.value!=null) result.add(point);
 		}
@@ -453,15 +463,24 @@ public abstract class ArchiveDataSerie {
 		return result;
 	}
 	
-	
+	public List<ArchivePoint> getLastPoints(int nb) throws IOException{
+		Long startTimestamp = null;
+		if(this.lastTimestamp != null){
+			if(this.currentStepPoint()!=null && nb>0) nb--;
+			startTimestamp = this.lastTimestamp - nb*this.step;
+			if(startTimestamp<this.t0) startTimestamp = this.t0;
+		}
+		
+		return getPoints(startTimestamp,null);
+	}
 	
 	
 	/**
-	 * Classe qui représente un point de l'archive
+	 * Classe qui represente un point de l'archive
 	 */
 	public class ArchivePoint{
 		Float value = null;
 		long timestamp;
-		public Float getValue(){ return value; }
+		public Float getValue(){ return this.value; }
 	}
 }
