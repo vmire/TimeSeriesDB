@@ -17,7 +17,6 @@ import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
-import com.mireau.timeseries.ArchiveDataSerie.ArchivePoint;
 import com.mireau.timeseries.ArchiveDataSerie.Type;
 import com.mireau.timeseries.RawDataSerie.Entry;
 
@@ -58,12 +57,14 @@ public class Test {
 				is = new FileInputStream(file);
 			} else {
 				// conf par défaut
-				is = Test.class.getClassLoader().getResourceAsStream(
-						Test.class.getPackage().getName().replaceAll("\\.", "/") + "/logging.properties");
+				is = Test.class.getClassLoader().getResourceAsStream(Test.class.getPackage().getName().replaceAll("\\.", "/") + "/logging.properties");
+				if(is==null) is = Test.class.getClassLoader().getResourceAsStream("logging.properties");
 			}
-			LogManager.getLogManager().readConfiguration(is);
-			logger = Logger.getLogger(Test.class.getName());
-			is.close();
+			if(is!=null){
+				LogManager.getLogManager().readConfiguration(is);
+				logger = Logger.getLogger(Test.class.getName());
+				is.close();
+			}
 			
 			/*
 			 * Console
@@ -76,7 +77,10 @@ public class Test {
 				
 				String verb = terms[0];
 				
-				if ("open".equalsIgnoreCase(verb)) {
+				if ("help".equalsIgnoreCase(verb)) {
+					printUsage();
+				}
+				else if ("open".equalsIgnoreCase(verb)) {
 					if(ts != null && !ts.isClosed())
 						ts.close();
 					if(terms.length < 2){
@@ -90,6 +94,7 @@ public class Test {
 				}
 				else if ("close".equalsIgnoreCase(verb)) {
 					ts.close();
+					ts = null;
 				}
 				else if ("status".equalsIgnoreCase(verb)) {
 					printStatus(ts);
@@ -162,16 +167,42 @@ public class Test {
 		System.out.print(">");
 	}
 	
+	public static void printUsage() throws IOException{
+		System.out.println("commands :");
+		System.out.println("   help  : this message");
+		System.out.println("   open  : open time serie by id");
+		System.out.println("   close : close time serie");
+		System.out.println("   status: status of this vitual machine");
+		System.out.println("   build : build 15mn average archive");
+		System.out.println("   put   : put value in the timeserie");
+		System.out.println("   last  : get last value");
+		System.out.println("   get   : get all points on 15mn archive");
+		System.out.println("   ");
+		System.out.println("   ");
+		System.out.println("   ");
+		System.out.println("   ");
+	}
+	
 	public static void printStatus(TimeSeriesDB ts) throws IOException{
 		SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/Y-HH:mm");
+		if(ts == null){
+			System.out.println("no opened time serie");
+			return;
+		}
 		System.out.println("raw data file : "+ts.rawDS.getFile().getName());
+	
 		if(ts.archives.isEmpty()){
 			System.out.println("no archive");
-		}
+		}	
 		else{
 			System.out.println("archives :");
 			for (ArchiveDataSerie archive : ts.archives) {
-				System.out.println("   "+archive.archiveFile+" type:"+archive.type()+" step:"+archive.step/60+"min debut:"+sdf.format(new Date(archive.t0*1000)));
+				if(archive == null) continue;
+				System.out.println("   "+archive.archiveFile+" type:"+archive.type()+" step:"+archive.step/60+"min debut:"+sdf.format(new Date(archive.t0*1000))+" len="+archive.archiveFile.length()+" last="+archive.lastTimestamp);
+				if(archive instanceof AverageArchiveDataSerie){
+					AverageArchiveDataSerie a = (AverageArchiveDataSerie)archive;
+					System.out.println("      stepTimestamp:"+a.stepTimestamp+" stepNb:"+a.stepNb+" stepLast:"+a.stepLast+" stepMin:"+a.stepMin+" stepMax:"+a.stepMax+" stepSum:"+a.stepSum);
+				}
 				List<ArchivePoint> l = archive.getLastPoints(3);
 				for (ArchivePoint p : l) {
 					System.out.println("     "+sdf.format(new Date(p.timestamp*1000))+" : "+p.value);

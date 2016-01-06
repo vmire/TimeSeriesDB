@@ -2,6 +2,7 @@ package com.mireau.timeseries;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
@@ -55,7 +56,12 @@ public class TimeSeriesDB {
 		Pattern filenamePattern = Pattern.compile("ts_"+id+"_[0-9]+[_a-zA-Z]*\\.ats", Pattern.CASE_INSENSITIVE);
 		for (File file : files) {
 			if(!filenamePattern.matcher(file.getName()).matches()) continue;
-			archives.add(ArchiveDataSerie.getArchive(file,id));
+			ArchiveDataSerie archive = ArchiveDataSerie.getArchive(file,id);
+			if(archive==null){
+				logger.warning("skip archive file : null");
+				continue;
+			}
+			archives.add(archive);
 		}
 	}
 	
@@ -86,18 +92,17 @@ public class TimeSeriesDB {
 		File file = new File(directory,filename);
 		if(file.exists()) throw new ArchiveInitException("le fichier "+file.getAbsolutePath()+" existe deja");
 		
+		ArchiveDataSerie.newArchiveFile(step, type, file);;
 		archive = ArchiveDataSerie.getArchive(file, this.id, step, type);
 		
 		archives.add(archive);
 		return archive;
 	}
 	
-	
-	
-
 	/**
 	 * Construit une archive a partir des données brutes 
 	 * @param step
+	 * @return ArchiveDataSerie
 	 * @throws ArchiveInitException 
 	 * @throws IOException 
 	 */
@@ -109,26 +114,26 @@ public class TimeSeriesDB {
 			Iterator<Entry> iter = rawDS.iterator(null,null);
 			archive.build(iter);
 		}
-		archives.add(archive);
 	}
 	
 	/**
 	 * Ajoute une valeur à la fin de la serie.
 	 * Le timestamp doit etre posterieur a tout autre point de la serie
+	 * @throws ArchiveInitException 
 	 */
-	public void post(Date date, float value) throws IOException{
+	public void post(Date date, float value) throws IOException, ArchiveInitException{
 		this.post(date.getTime()/1000,value);
 	}
-	public void post(Date date, double value) throws IOException{
+	public void post(Date date, double value) throws IOException, ArchiveInitException{
 		this.post(date.getTime()/1000,value);
 	}
-	public void post(long timestamp, float value) throws IOException{
+	public void post(long timestamp, float value) throws IOException, ArchiveInitException{
 		rawDS.post(timestamp,value);
 		for (ArchiveDataSerie archive : archives) {
 			archive.post(timestamp,value);
 		}
 	}
-	public void post(long timestamp, double value) throws IOException{
+	public void post(long timestamp, double value) throws IOException, ArchiveInitException{
 		post(timestamp,(float)value);
 	}
 	/**

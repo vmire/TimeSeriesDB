@@ -19,6 +19,7 @@ import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
 import com.mireau.timeseries.ArchiveDataSerie.Type;
+import com.mireau.timeseries.RawDataSerie.Entry;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class DataSerieTest {
@@ -54,8 +55,6 @@ public class DataSerieTest {
 	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		
-		
 		/*
 		 * Nettoyage du répertoire
 		 */
@@ -84,30 +83,34 @@ public class DataSerieTest {
 	//Avant chaque test
 	@Before
 	public void setUp() throws Exception {
+		//Création de la TimeSerieDB
+		ts = new TimeSeriesDB(TEST_SERIE_NAME,DIR);
+		
+		rawFile = new File(DIR+"/ts_"+TEST_SERIE_NAME+".rts");
 	}
 
 	//Après chaque test
 	@After
 	public void tearDown() throws Exception {
+		/*
+		 * On termine : fermeture du TimeSerieDB
+		 */
+		if (ts != null)
+			ts.close();
 	}
 
 	
+	TimeSeriesDB ts;
+	File rawFile;	
 	
 	@Test
 	public void t01_test() throws IOException, ArchiveInitException {
-		TimeSeriesDB ts;
-		File rawFile = new File(DIR+"/ts_"+TEST_SERIE_NAME+".rts");
-		
-		//Création de la TimeSerieDB
-		ts = new TimeSeriesDB(TEST_SERIE_NAME,DIR);
-				
-		//Le fichier ne doit pas encore exiter
-		Assert.assertTrue(!rawFile.exists());
 		
 		/* 
 		 * Archive sur 5 minutes / tests de création et à vide
 		 */
-		ts.createArchive(5*60, Type.AVERAGE);
+		ArchiveDataSerie archive5 = ts.createArchive(5*60, Type.AVERAGE);
+		archive5.setWriteStartegy(ArchiveDataSerie.WriteStrategy.CHANGE_STEP);
 		Assert.assertEquals(1,ts.archives.size());
 		
 		File archive5File = new File(DIR+"/ts_"+TEST_SERIE_NAME+"_"+(5*60)+".ats");
@@ -131,8 +134,10 @@ public class DataSerieTest {
 		Assert.assertEquals(rawFile.length(), RawDataSerie.DATA_LEN * nb);
 		
 		//on est censé n'avoir aucun enregistrement dans l'archive de 5mn
+		long expectedLen = ArchiveDataSerie.HEADER1_LEN;
+		if(archive5.getWriteStartegy() == ArchiveDataSerie.WriteStrategy.ALL_POINTS)  expectedLen += archive5.currentStepDataLength(); 
 		Assert.assertEquals(ArchiveDataSerie.HEADER1_LEN,archive5File.length());
-				
+		
 		/*
 		 * Deuxième enregistrement
 		 */
@@ -142,7 +147,7 @@ public class DataSerieTest {
 		Assert.assertEquals(rawFile.length(), RawDataSerie.DATA_LEN * nb);
 		
 		//on est censé n'avoir aucun enregistrement dans l'archive de 5mn
-		Assert.assertEquals(ArchiveDataSerie.HEADER1_LEN,archive5File.length());
+		Assert.assertEquals(ArchiveDataSerie.HEADER1_LEN + archive5.currentStepDataLength(),archive5File.length());
 				
 		/*
 		 * Troisième enregistrement
@@ -153,7 +158,7 @@ public class DataSerieTest {
 		Assert.assertEquals(rawFile.length(), RawDataSerie.DATA_LEN * nb);
 		
 		//on est censé avoir 1 enregistrement dans l'archive de 5mn, 
-		assertNbInArchiveFile(1,archive5File);	
+		assertNbInArchiveFile(1,archive5,archive5File);	
 	
 		/*
 		 * 4° enregistrement
@@ -164,7 +169,7 @@ public class DataSerieTest {
 		Assert.assertEquals(rawFile.length(), RawDataSerie.DATA_LEN * nb);
 		
 		//on est censé avoir 2 enregistrement dans l'archive de 5mn
-		assertNbInArchiveFile(2,archive5File);
+		assertNbInArchiveFile(2,archive5,archive5File);
 		
 		/*
 		 * 5° enregistrement
@@ -175,30 +180,37 @@ public class DataSerieTest {
 		Assert.assertEquals(rawFile.length(), RawDataSerie.DATA_LEN * nb);
 		
 		//on est censé avoir 4 enregistrement dans l'archive de 5mn
-		assertNbInArchiveFile(4,archive5File);
+		assertNbInArchiveFile(4,archive5,archive5File);
 		
 		/*
 		 * construction d'une archive 15 mn. Elle doit récupérer les valeurs brutes déjà enregistrées
 		 */
+		ArchiveDataSerie archive15 = ts.createArchive(15*60, Type.AVERAGE);
 		ts.buildArchive(15*60, Type.AVERAGE);
 		File archive15File = new File(DIR+"/ts_"+TEST_SERIE_NAME+"_"+(15*60)+".ats");
 		Assert.assertTrue(archive15File.exists());
 		
 		//on est censé avoir 2 enregistrements dans l'archive de 15mn 
-		assertNbInArchiveFile(2,archive15File);
-				
+		assertNbInArchiveFile(2,archive15, archive15File);
+		
 		/*
-		 * On termine : fermeture du TimeSerieDB
+		 * Requete
 		 */
-		if (ts != null)
-			ts.close();
+		Entry e = ts.getLast();
+		Assert.assertEquals(5,e.value,0.0000001);
+		Assert.assertEquals(cal.getTimeInMillis()/1000,e.timestamp);
 	}
 
+	@Test
+	public void t02_test() throws IOException, ArchiveInitException {
+		Entry e = ts.getLast();
+		Assert.assertEquals(5,e.value,0.0000001);
+	}
 	
 	
-	void assertNbInArchiveFile(int nb, File archiveFile){
+	void assertNbInArchiveFile(int nb, ArchiveDataSerie archive, File archiveFile){
 		Assert.assertEquals(
-				nb * AverageArchiveDataSerie.ENREG_LEN + AverageArchiveDataSerie.CURRENT_STEP_DATA_LENGTH + ArchiveDataSerie.HEADER1_LEN,
+				nb * AverageArchiveDataSerie.ENREG_LEN + archive.currentStepDataLength() + ArchiveDataSerie.HEADER1_LEN,
 				archiveFile.length()
 				);
 	}

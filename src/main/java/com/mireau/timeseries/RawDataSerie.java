@@ -32,9 +32,6 @@ public class RawDataSerie {
 	String id;
 	File directory;
 	
-	/** Fichier en cours */
-	RandomAccessFile rdf = null;
-	
 	/** dernier enregistrement */
 	protected Entry last;
 	
@@ -48,13 +45,8 @@ public class RawDataSerie {
 		return new File(this.directory,filename);
 	}
 	
-	public void close() throws IOException{
-		if(rdf != null && rdf.getChannel().isOpen()) rdf.close();
-	}
-	
-	public boolean hasNext() throws IOException{
-		boolean eof = (rdf.getFilePointer() < rdf.length());
-		return !eof;
+	protected void close(){
+		
 	}
 	
 	/**
@@ -107,35 +99,45 @@ public class RawDataSerie {
 	
 	public void post(long timestamp, float value) throws IOException{
 		File file = getFile();
-		RandomAccessFile rdf = new RandomAccessFile(file,"rw");
+		RandomAccessFile rdf = null;
 		
-		//On vérifie que la longueur est cohérente
-		long len = rdf.length();
-		logger.info(file.getName()+" len="+len);
-		if(len>0){
-			int mod = (int)(len % DATA_LEN);
-			if(mod != 0){
-				logger.warning("Taille de fichier incoherence ("+len/DATA_LEN+"x"+DATA_LEN+", reste "+mod+"). retour a "+(len-mod));
-				len  = len - mod;
+		try{
+			rdf = new RandomAccessFile(file,"rw");
+			
+			//On vérifie que la longueur est cohérente
+			long len = rdf.length();
+			if(len>0){
+				int mod = (int)(len % DATA_LEN);
+				if(mod != 0){
+					logger.warning("Taille de fichier incoherence ("+len/DATA_LEN+"x"+DATA_LEN+", reste "+mod+"). retour a "+(len-mod));
+					len  = len - mod;
+				}
+				
+				if(timestamp < getLast(rdf).timestamp){
+					logger.warning("la nouvelle valeur anterieure a la derniere (prev:"+sdf.format(new Date((long)last.timestamp*1000))+" new:"+sdf.format(new Date((long)timestamp*1000))+")");
+				}
+				
+				//Positionnement en fin de fichier
+				rdf.seek(len);
 			}
 			
-			if(timestamp < getLast(rdf).timestamp){
-				logger.warning("la nouvelle valeur anterieure a la derniere (prev:"+sdf.format(new Date((long)last.timestamp*1000))+" new:"+sdf.format(new Date((long)timestamp*1000))+")");
+			//On écrit l'enregistrement
+			if(timestamp>Integer.MAX_VALUE){
+				logger.warning("timestamp tronqué : "+timestamp+"/"+(int)timestamp);
 			}
 			
-			//Positionnement en fin de fichier
-			rdf.seek(len);
+			if(last==null) last = new Entry();
+			last.timestamp = (int)timestamp;
+			last.value = value;
+			
+			logger.fine("write: "+value+"("+sdf.format(new Date(timestamp*1000))+")");
+			rdf.writeInt((int)last.timestamp);
+			rdf.writeFloat(last.value);
+		}
+		finally {
+			if(rdf != null) rdf.close();
 		}
 		
-		//On écrit l'enregistrement
-		if(timestamp>Integer.MAX_VALUE){
-			logger.warning("timestamp tronqué : "+timestamp+"/"+(int)timestamp);
-		}
-		logger.fine("write: "+value+"("+sdf.format(new Date(timestamp*1000))+")");
-		rdf.writeInt((int)timestamp);
-		rdf.writeFloat(value);
-		
-		rdf.close();
 	}
 	
 	/**

@@ -59,8 +59,21 @@ public abstract class ArchiveDataSerie {
 		AVERAGE, LAST, CUMUL
 	}
 	
+	/**
+	 * Stratégie d'ecriture sur disque
+	 * ALL_POINTS (par défaut): 
+	 * 		tous les points donnent lieu à une écriture (compteurs sur le step en cours au minimum)
+	 * CHANGE_STEP: 
+	 * 		ecriture sur changement de step uniquement. 
+	 * 		Meilleures performance par moins d'accès disque, mais risque de perte de données sur fin anormale
+	 *		
+	 */
+	enum WriteStrategy{
+		ALL_POINTS, CHANGE_STEP
+	}
 	
 	String id;
+	WriteStrategy writeStartegy = WriteStrategy.ALL_POINTS;
 	
 	/** espacement des points dans la série (secondes) */
 	Integer step = null;
@@ -68,7 +81,7 @@ public abstract class ArchiveDataSerie {
 	static Logger logger = Logger.getLogger(ArchiveDataSerie.class.getName());
 	
 	/** Fichier archive */
-	File archiveFile;
+	protected File archiveFile;
 	
 	/**
 	 * timestamp du dernier step enregistré (terminé)
@@ -95,6 +108,21 @@ public abstract class ArchiveDataSerie {
 	}
 	
 	/**
+	 * Constructeur d'une nouvelle archive
+	 * 
+	 * @param dir
+	 * @param id
+	 * @param step
+	 * @param writeStrategy
+	 * @throws IOException
+	 * @throws ArchiveInitException
+	 */
+	protected ArchiveDataSerie(File file, String id, Integer step, WriteStrategy strategy) throws IOException, ArchiveInitException{
+		this(file,id,step);
+		this.writeStartegy = strategy;
+	}
+	
+	/**
 	 * Obtient l'instance de l'archive existante
 	 * @throws ArchiveInitException 
 	 * @throws IOException 
@@ -111,28 +139,17 @@ public abstract class ArchiveDataSerie {
 	}
 	
 	/**
-	 * Obtient l'instance de l'archive (existante ou non)
-	 * @throws ArchiveInitException 
-	 * @throws IOException 
-	 */
-	public static ArchiveDataSerie getArchive(File file, String id, Integer step, Type type) throws IOException, ArchiveInitException{
-		ArchiveDataSerie archive = null;
-		if(type == Type.AVERAGE) archive = new AverageArchiveDataSerie(file, id, step);
-		return archive;
-	}
-	
-	/**
 	 * Initialise une nouvelle archive.
 	 * Création du fichier. Ecriture du premier en-tete
 	 * 
 	 * @throws IOException
 	 * @throws ArchiveInitException
 	 */
-	protected synchronized void newArchive() throws IOException, ArchiveInitException{
+	protected static void newArchiveFile(Integer step, ArchiveDataSerie.Type type, File file) throws IOException, ArchiveInitException{
 		if(step==null) throw new ArchiveInitException("step non initialisé");
 		
 		/*
-		 * Nouveau fichier - On l'initialise
+		 * Nouveau fichier - On l'initialise ou on écrase
 		 */
 		//On vérifie que 'step' est cohérent : nombre entier de step dans une heure
 		if(step!=60 
@@ -151,23 +168,36 @@ public abstract class ArchiveDataSerie {
 			throw new ArchiveInitException("valeur de step incorrecte: "+step);
 		}
 		
-		RandomAccessFile adf = openFile("rw");
+		RandomAccessFile adf = new RandomAccessFile(file, "rw");
+		adf.seek(0);
 		
 		//Step
 		adf.writeInt(step);
 		
 		//Type
-		Integer t = encodeType();
+		Integer t = ArchiveDataSerie.encodeType(type);
 		adf.writeInt(t);
 		
 		//Timestamp a 0
 		adf.writeLong(0);
 		
-		
 		adf.setLength(adf.getFilePointer());
 		
-		releaseFile(adf);
+		adf.close();
 	}
+	
+	/**
+	 * Obtient l'instance de l'archive (existante ou non)
+	 * @throws ArchiveInitException 
+	 * @throws IOException 
+	 */
+	public static ArchiveDataSerie getArchive(File file, String id, Integer step, Type type) throws IOException, ArchiveInitException{
+		ArchiveDataSerie archive = null;
+		if(type == Type.AVERAGE) archive = new AverageArchiveDataSerie(file, id, step);
+		return archive;
+	}
+	
+	
 	
 	/**
 	 * Ouvre et initialise une archive (existante)
@@ -182,11 +212,7 @@ public abstract class ArchiveDataSerie {
 	protected synchronized void initArchive() throws IOException, ArchiveInitException{
 		logger.info("Init archive : "+archiveFile.getName());
 		
-		if(!archiveFile.exists() || archiveFile.length()==0){
-			//Le fichier archive n'existe pas. On la crée
-			newArchive();
-			return;
-		}
+		if(!archiveFile.exists() || archiveFile.length()==0) throw new ArchiveInitException("archive does not exists");
 		
 		long len = archiveFile.length();
 		logger.info("archive "+archiveFile.getName()+" len="+len);
@@ -217,7 +243,7 @@ public abstract class ArchiveDataSerie {
 		 */
 		this.t0 = adf.readLong();
 		
-		logger.fine("start: "+sdf.format(new Date(t0*1000))+" step:"+step);
+		logger.fine("start: "+(t0==0 ? "no start date" : sdf.format(new Date(t0*1000)))+" step:"+step);
 		
 		/*
 		 * Valeurs initialisees : timestamp + valeurs sur le step en cours
@@ -267,7 +293,7 @@ public abstract class ArchiveDataSerie {
 	}
 	
 	protected void releaseFile(RandomAccessFile raf) throws IOException{
-		raf.close();
+		if(raf != null) raf.close();
 	}
 	
 	
@@ -299,8 +325,10 @@ public abstract class ArchiveDataSerie {
 		return result;
 	}
 	
-	private Integer encodeType(){
-		if(this instanceof AverageArchiveDataSerie) return 1;
+	protected static Integer encodeType(Type type){
+		if(type == Type.AVERAGE) return 1;
+		if(type == Type.LAST) return 2;
+		if(type == Type.CUMUL) return 3;
 		else return null;
 	}
 	
@@ -325,14 +353,15 @@ public abstract class ArchiveDataSerie {
 	 */
 	public void close() throws IOException{
 		RandomAccessFile raf = openFile("rw");
-		writeCurrentStepData(raf);
+		//writeCurrentStepData(raf);
 		releaseFile(raf);
 	}
 	
 	/**
 	 * Ecriture des données sur le step en cours
+	 * @throws ArchiveInitException 
 	 */
-	protected abstract void writeCurrentStepData(RandomAccessFile raf) throws IOException;
+	protected abstract void writeCurrentStepData(RandomAccessFile raf) throws IOException, ArchiveInitException;
 	
 	/**
 	 * reinitialisation des variables sur le step en cours
@@ -365,8 +394,9 @@ public abstract class ArchiveDataSerie {
 	 * @param timestamp
 	 * @param value
 	 * @throws IOException
+	 * @throws ArchiveInitException 
 	 */
-	public abstract void post(long timestamp, float value) throws IOException;
+	public abstract void post(long timestamp, float value) throws IOException, ArchiveInitException;
 	
 	/**
 	 * Construit l'objet ArchivePoint correspondant aux valeurs enregistrées sur le step en cours
@@ -383,9 +413,15 @@ public abstract class ArchiveDataSerie {
 		if(!iter.hasNext()) return;
 		Entry e = iter.next();
 		if(t0!=null && t0>0){
-			if(e.timestamp < lastTimestamp + getRecordLen()){
+			//l'archive existe déjà avec un timestamp de début défini
+			if(lastTimestamp==null || t0>lastTimestamp){
+				//Suppression du fichier
+				archiveFile.delete();
+			}
+			else if(e.timestamp < lastTimestamp + getRecordLen()){
 				//timestamp dans l'archive ou anterieur : on tronque
 				Long pos = getTimestampPosition(e.timestamp);
+				logger.info("troncature du fichier archive "+archiveFile.getName()+" à pos="+pos);
 				RandomAccessFile raf = openFile("rw");
 				raf.setLength(pos);
 				resetCurrentStepData();
@@ -430,6 +466,8 @@ public abstract class ArchiveDataSerie {
 	 * @throws IOException 
 	 */
 	public List<ArchivePoint> getPoints(Long startTimestamp, Long endTimestamp) throws IOException{
+		if(startTimestamp==null) startTimestamp = (long)0;
+		
 		List<ArchivePoint> result = new ArrayList<ArchivePoint>();
 		
 		long len = this.archiveFile.length();
@@ -473,14 +511,13 @@ public abstract class ArchiveDataSerie {
 		
 		return getPoints(startTimestamp,null);
 	}
-	
-	
-	/**
-	 * Classe qui represente un point de l'archive
-	 */
-	public class ArchivePoint{
-		Float value = null;
-		long timestamp;
-		public Float getValue(){ return this.value; }
+
+
+	public WriteStrategy getWriteStartegy() {
+		return writeStartegy;
+	}
+
+	public void setWriteStartegy(WriteStrategy writeStartegy) {
+		this.writeStartegy = writeStartegy;
 	}
 }

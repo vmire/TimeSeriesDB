@@ -8,7 +8,7 @@ import java.util.Date;
 public class AverageArchiveDataSerie extends ArchiveDataSerie {
 
 	static int ENREG_LEN = 13;
-	static int CURRENT_STEP_DATA_LENGTH = 44;
+	static int CURRENT_STEP_DATA_LENGTH = 28;
 	
 	
 	/** somme des valeurs pour le step en cours (pour le type AVERAGE uniquement)*/
@@ -28,13 +28,6 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 	
 	public AverageArchiveDataSerie(File file, String id, Integer step) throws IOException, ArchiveInitException {
 		super(file, id, step);
-		
-		stepLast = null;
-		stepMax = null;
-		stepMin = null;
-		stepNb = 0;
-		stepSum = 0;
-		stepTimestamp = (long)0;
 	}
 
 	/**
@@ -47,8 +40,10 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 	/**
 	 * Enregistrement des données sur le step en cours
 	 * @throws IOException 
+	 * @throws ArchiveInitException 
 	 */
-	protected synchronized void writeCurrentStepData(RandomAccessFile raf) throws IOException{
+	protected synchronized void writeCurrentStepData(RandomAccessFile raf) throws IOException, ArchiveInitException{
+		if(stepTimestamp==null) throw new ArchiveInitException("stepTimestamp non initialisé");
 		logger.fine("write current step vars : "+sdf.format(new Date((long)stepTimestamp*1000))+" nb="+stepNb+" sum="+stepSum);
 		raf.seek(CUR_STEP_RECORD_POS);
 		raf.writeLong(stepTimestamp);
@@ -69,7 +64,7 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 		stepMax = null;
 	} 
 	/**
-	 * Lecture des donn�es sur le step en cours
+	 * Lecture des données sur le step en cours
 	 */
 	protected void readCurrentStepData(RandomAccessFile adf) throws IOException{
 		adf.seek(CUR_STEP_RECORD_POS);
@@ -84,11 +79,11 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 			stepMin = null;
 			stepMax = null;
 		}
-		logger.fine("step en cours: sum="+stepSum+" nb="+stepNb+" min="+stepMin+" max="+stepMax);
+		logger.fine("step en cours: sum="+stepSum+" nb="+stepNb+" min="+stepMin+" max="+stepMax+" timestamp="+stepTimestamp);
 	}
 	
 	/**
-	 * Longueur des donn�es du step en cours �crites dans le fichier archive
+	 * Longueur des données du step en cours écrites dans le fichier archive
 	 */
 	protected int currentStepDataLength(){
 		return CURRENT_STEP_DATA_LENGTH;
@@ -112,21 +107,30 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 	 * @param timestamp
 	 * @param value
 	 * @throws IOException
+	 * @throws ArchiveInitException 
 	 */
-	public void post(long timestamp, float value) throws IOException{
+	public void post(long timestamp, float value) throws IOException, ArchiveInitException{
 		if(stepTimestamp!=null && stepTimestamp>0 && timestamp < stepTimestamp){
 			logger.warning("Nouvelle valeur anterieure au step en cours (cur step:"+sdf.format(new Date(stepTimestamp*1000))+" new value:"+sdf.format(new Date(timestamp*1000))+")");
 		}
 		
+		RandomAccessFile adf = null;
+		
 		if(stepTimestamp==null || stepTimestamp==0){
 			//Calcul du timestamp d'origine de l'archive : arrondi au step immédiatement inférieur
 			stepTimestamp = getTimestampOrigine(timestamp);
+			logger.fine("wite start timestamp");
+			//ecriture du timestamp dans l'en-tête
+			adf = openFile("rw");
+			adf.seek(8);	//on se positionne sur le champ timestamp de début
+			adf.writeLong(stepTimestamp);
 		}
 		else if(timestamp >= stepTimestamp+step){
 			/*
 			 * Changement de step -> écriture
 			 */	
-			this.writePoint();
+			adf = openFile("rw");
+			this.writePoint(adf);
 		
 			this.stepSum = 0;
 			this.stepNb = 0;
@@ -147,6 +151,15 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 		
 		logger.fine("add to current step : "+stepLast+" nb="+stepNb+" sum="+stepSum);
 		
+		if(this.writeStartegy == WriteStrategy.ALL_POINTS){
+			//On écrit systématiquement le données du step en cours
+			//Plus sûr, mais moins performant
+			if(adf==null) adf = openFile("rw");
+			writeCurrentStepData(adf);
+		}
+		
+		//On relache le fichier
+		releaseFile(adf);
 	}
 	
 	
@@ -154,19 +167,18 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 	 * Enregistre les valeurs du step en cours dans le fichier
 	 * @throws IOException 
 	 */
-	protected void writePoint() throws IOException{
+	private void writePoint(RandomAccessFile adf) throws IOException{
 		if(stepNb == 0) return;
 		
 		AverageArchivePoint point = (AverageArchivePoint)currentStepPoint();
 		
-		RandomAccessFile adf = openFile("rw");
-		
 		long len = adf.length();
 		
-		/*
-		 * Premier enregistrement
-		 */
-		if(len<HEADER1_LEN + AverageArchiveDataSerie.CURRENT_STEP_DATA_LENGTH){	
+		
+		if(len<HEADER1_LEN + AverageArchiveDataSerie.CURRENT_STEP_DATA_LENGTH){
+			/*
+			 * Premier enregistrement de l'archive
+			 */
 			adf.seek(8);	//TODO ne pas coder en dur si possible: correspond à l'enregistrement de step+type
 			//Timestamp de début de l'archive
 			adf.writeLong(stepTimestamp);
@@ -174,6 +186,9 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 			len = adf.length();
 		}
 		else{
+			/*
+			 * Enregistrement placé à la fin
+			 */
 			adf.seek(len);
 		}
 		
@@ -206,9 +221,6 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 		
 		//Mise a jour du timestamp de dernier enregistrement
 		this.lastTimestamp = stepTimestamp;
-		
-		//On relache le fichier
-		releaseFile(adf);
 	}
 	
 	/**
@@ -225,13 +237,4 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 		return p;
 	}
 	
-	/**
-	 * Classe qui représente un point de l'archive
-	 */
-	public class AverageArchivePoint extends ArchivePoint{
-		Float min = null;
-		Float max = null;
-		public Float getMin(){ return min; }
-		public Float getMax(){ return max; }
-	}
 }
