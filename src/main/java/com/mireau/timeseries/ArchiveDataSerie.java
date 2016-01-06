@@ -283,17 +283,13 @@ public abstract class ArchiveDataSerie {
 		adf.seek(len);
 		
 		//On relache le fichier
-		releaseFile(adf);
+		adf.close();
 	}
 	
 	protected RandomAccessFile openFile(String mode) throws FileNotFoundException{
 		RandomAccessFile raf;
 		raf = new RandomAccessFile(archiveFile, mode);
 		return raf;
-	}
-	
-	protected void releaseFile(RandomAccessFile raf) throws IOException{
-		if(raf != null) raf.close();
 	}
 	
 	
@@ -350,11 +346,14 @@ public abstract class ArchiveDataSerie {
 	 * Ferme une archive en enregistrant les valeurs reçues sur le step en cours
 	 * 
 	 * @throws IOException
+	 * @throws ArchiveInitException 
 	 */
-	public void close() throws IOException{
-		RandomAccessFile raf = openFile("rw");
-		//writeCurrentStepData(raf);
-		releaseFile(raf);
+	public void close() throws IOException, ArchiveInitException{
+		if(writeStartegy==WriteStrategy.CHANGE_STEP){
+			RandomAccessFile raf = openFile("rw");
+			writeCurrentStepData(raf);
+			raf.close();
+		}
 	}
 	
 	/**
@@ -397,6 +396,8 @@ public abstract class ArchiveDataSerie {
 	 * @throws ArchiveInitException 
 	 */
 	public abstract void post(long timestamp, float value) throws IOException, ArchiveInitException;
+	protected abstract void post(long timestamp, float value, RandomAccessFile adf) throws IOException, ArchiveInitException;
+	
 	
 	/**
 	 * Construit l'objet ArchivePoint correspondant aux valeurs enregistrées sur le step en cours
@@ -411,37 +412,50 @@ public abstract class ArchiveDataSerie {
 	public void build(Iterator<Entry> iter) throws IOException, ArchiveInitException{
 		//On tronque le fichier au timestamp correspondant a la premiere valeur.
 		if(!iter.hasNext()) return;
-		Entry e = iter.next();
-		if(t0!=null && t0>0){
-			//l'archive existe déjà avec un timestamp de début défini
-			if(lastTimestamp==null || t0>lastTimestamp){
-				//Suppression du fichier
-				archiveFile.delete();
-			}
-			else if(e.timestamp < lastTimestamp + getRecordLen()){
-				//timestamp dans l'archive ou anterieur : on tronque
-				Long pos = getTimestampPosition(e.timestamp);
-				logger.info("troncature du fichier archive "+archiveFile.getName()+" à pos="+pos);
-				RandomAccessFile raf = openFile("rw");
-				raf.setLength(pos);
-				resetCurrentStepData();
-				this.writeCurrentStepData(raf);
-				if(pos > HEADER1_LEN + currentStepDataLength()){
-					raf.seek(pos-getRecordLen());
-					ArchivePoint p = readPoint(raf);
-					lastTimestamp = p.timestamp;
+		RandomAccessFile raf = null;
+		try{
+			Entry e = iter.next();
+			raf = openFile("rw");
+			if(t0!=null){
+				//l'archive existe déjà avec un timestamp de début défini
+				if(lastTimestamp==null || e.timestamp < lastTimestamp + getRecordLen()){
+					//timestamp dans l'archive ou anterieur : 
+					//on tronque l'archive à la position de la première de la série à insérer 
+					Long pos = getTimestampPosition(e.timestamp);
+					logger.info("troncature du fichier archive "+archiveFile.getName()+" à pos="+pos);
+					raf.setLength(pos);
+					resetCurrentStepData();
+					
+					if(pos > HEADER1_LEN + currentStepDataLength()){
+						//On conserve des points dans l'archive. on va lire la dernière valeur
+						raf.seek(pos-getRecordLen());
+						ArchivePoint p = readPoint(raf);
+						lastTimestamp = p.timestamp;
+					}
 				}
-				releaseFile(raf);
 			}
+			
+			//on désactive l'écriture systématique (du current step) à chaque point
+			WriteStrategy writeStrategy = this.writeStartegy;
+			this.setWriteStartegy(WriteStrategy.CHANGE_STEP);
+			
+			//On poste la premiere valeur deja recuperee
+			this.post(e.timestamp, e.value, raf);
+			
+			//Ajout des valeurs
+			while(iter.hasNext()){
+				e = iter.next();
+				this.post(e.timestamp, e.value, raf);
+			}
+			
+			//ecriture du current step
+			this.writeCurrentStepData(raf);
+			
+			//On rétabli la valeur de WriteStrategy
+			this.setWriteStartegy(writeStrategy);
 		}
-		
-		//On poste la premiere valeur deja recuperee
-		this.post(e.timestamp, e.value);
-		
-		//Ajout des valeurs
-		while(iter.hasNext()){
-			e = iter.next();
-			this.post(e.timestamp, e.value);
+		finally{
+			if(raf!=null) raf.close();
 		}
 	}
 	
@@ -453,7 +467,7 @@ public abstract class ArchiveDataSerie {
 	 */
 	private Long getTimestampPosition(Long timestamp){
 		long nbToStart = 0;
-		if(timestamp!=null && timestamp > t0){
+		if(t0 > 0 && timestamp!=null && timestamp > t0){	//si t0==0, il n'est en fait pas défini
 			nbToStart = (timestamp - t0) / step;
 		}
 		long startIdx = nbToStart*getRecordLen() + HEADER1_LEN + currentStepDataLength();
@@ -489,7 +503,7 @@ public abstract class ArchiveDataSerie {
 				point.timestamp = t;
 				result.add(point);
 			}
-			releaseFile(raf);
+			raf.close();
 		}
 		
 		if(endTimestamp==null || lastTimestamp==null || endTimestamp >= lastTimestamp){

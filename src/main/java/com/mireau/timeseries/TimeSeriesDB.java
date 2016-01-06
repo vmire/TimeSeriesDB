@@ -66,7 +66,7 @@ public class TimeSeriesDB {
 	}
 	
 	
-	public void close() throws IOException{
+	public void close() throws IOException, ArchiveInitException{
 		rawDS.close();
 		for (ArchiveDataSerie archive : archives) {
 			if(archive !=null) archive.close();

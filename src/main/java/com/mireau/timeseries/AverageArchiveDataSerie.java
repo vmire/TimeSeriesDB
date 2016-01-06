@@ -109,19 +109,34 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 	 * @throws IOException
 	 * @throws ArchiveInitException 
 	 */
+	@Override
 	public void post(long timestamp, float value) throws IOException, ArchiveInitException{
+		post(timestamp,value,null);
+	}
+	
+	/**
+	 * Enregistrement d'un point
+	 * Le curseur doit être positionné en fin de fichier
+	 * @param timestamp
+	 * @param value
+	 * @param ramdomAccessFile 
+	 * @throws IOException
+	 * @throws ArchiveInitException 
+	 */
+	@Override
+	protected void post(long timestamp, float value, RandomAccessFile adf) throws IOException, ArchiveInitException{
+		boolean keepFileOpened = adf!=null;
+		
 		if(stepTimestamp!=null && stepTimestamp>0 && timestamp < stepTimestamp){
 			logger.warning("Nouvelle valeur anterieure au step en cours (cur step:"+sdf.format(new Date(stepTimestamp*1000))+" new value:"+sdf.format(new Date(timestamp*1000))+")");
 		}
-		
-		RandomAccessFile adf = null;
 		
 		if(stepTimestamp==null || stepTimestamp==0){
 			//Calcul du timestamp d'origine de l'archive : arrondi au step immédiatement inférieur
 			stepTimestamp = getTimestampOrigine(timestamp);
 			logger.fine("wite start timestamp");
 			//ecriture du timestamp dans l'en-tête
-			adf = openFile("rw");
+			if(adf==null) adf = openFile("rw");
 			adf.seek(8);	//on se positionne sur le champ timestamp de début
 			adf.writeLong(stepTimestamp);
 		}
@@ -129,7 +144,7 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 			/*
 			 * Changement de step -> écriture
 			 */	
-			adf = openFile("rw");
+			if(adf==null) adf = openFile("rw");
 			this.writePoint(adf);
 		
 			this.stepSum = 0;
@@ -158,8 +173,8 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 			writeCurrentStepData(adf);
 		}
 		
-		//On relache le fichier
-		releaseFile(adf);
+		//On ferme le fichier
+		if(!keepFileOpened) adf.close();
 	}
 	
 	

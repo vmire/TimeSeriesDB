@@ -43,7 +43,7 @@ public class Test {
 					try {
 						if (ts != null)
 							ts.close();
-					} catch (IOException e) {
+					} catch (IOException | ArchiveInitException e) {
 						logger.log(Level.SEVERE, e.getMessage(), e);
 					}
 				}
