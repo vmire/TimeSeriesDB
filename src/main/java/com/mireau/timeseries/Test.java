@@ -9,6 +9,7 @@ import java.lang.Thread.State;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -126,9 +127,47 @@ public class Test {
 					}
 				}
 				else if ("get".equalsIgnoreCase(verb)) {
-					List<ArchivePoint> list = ts.getArchive(15*60, Type.AVERAGE).getPoints(null,null);
-					for (ArchivePoint point : list) {
-						System.out.println(sdf.format(new Date(point.timestamp*1000))+" : "+point.value);
+					
+					if(terms.length < 3){
+						System.out.println("usage: get <step> <periode> [start timestamp]");
+						continue;
+					}
+					try{
+						int step = Integer.parseInt(terms[1]);
+						
+						String periodStr = terms[2];
+						char unit = periodStr.charAt(periodStr.length()-1);
+						int multipl = 1;
+						if(unit=='h' || unit=='d' || unit=='w' || unit=='m' || unit=='y'){
+							periodStr = periodStr.substring(0,periodStr.length()-1);
+							switch(unit){
+								case 'h': multipl = 3600; break;
+								case 'd': multipl = 86400; break;
+								case 'w': multipl = 604800; break;
+								case 'm': multipl = 2678400; break;
+								case 'y': multipl = 31536000; break;
+							}
+						}
+						int period = Integer.parseInt(periodStr) * multipl;
+						Long start = null;
+						if(terms.length>3) start = Long.parseLong(terms[3]);
+						Long end = null;
+						if(start==null){
+							end = new Date().getTime()/1000;
+							start = end-period;
+						}
+						else{
+							end = start+period;
+						}
+						List<ArchivePoint> list = ts.getArchive(step, Type.AVERAGE).getPoints(start,end);
+						DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss");
+						for (ArchivePoint point : list) {
+							System.out.println(point.csv(dateFormat));
+						}
+					}
+					catch(NumberFormatException e){
+						System.out.println("arguments malformé");
+						continue;
 					}
 				}
 				else if ("quit".equalsIgnoreCase(verb) || "exit".equalsIgnoreCase(verb)) {

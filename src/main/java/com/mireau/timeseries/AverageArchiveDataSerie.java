@@ -252,4 +252,10 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 		return p;
 	}
 	
+	@Override
+	protected ArchivePoint newEmptyPoint(Long timestamp){
+		AverageArchivePoint p = new AverageArchivePoint();
+		p.timestamp = timestamp;
+		return p;
+	}
 }

@@ -200,12 +200,7 @@ public abstract class ArchiveDataSerie {
 	
 	
 	/**
-	 * Ouvre et initialise une archive (existante)
-	 * 
-	 * @param dir
-	 * @param id
-	 * @param step
-	 * @param type
+	 * Initialise l'objet archive avec le contenu du fichier correspondant
 	 * @throws IOException
 	 * @throws ArchiveInitException
 	 */
@@ -420,7 +415,7 @@ public abstract class ArchiveDataSerie {
 				//l'archive existe déjà avec un timestamp de début défini
 				if(lastTimestamp==null || e.timestamp < lastTimestamp + getRecordLen()){
 					//timestamp dans l'archive ou anterieur : 
-					//on tronque l'archive à la position de la première de la série à insérer 
+					//on tronque l'archive à la position de la première valeur de la série à insérer 
 					Long pos = getTimestampPosition(e.timestamp);
 					logger.info("troncature du fichier archive "+archiveFile.getName()+" à pos="+pos);
 					raf.setLength(pos);
@@ -474,6 +469,11 @@ public abstract class ArchiveDataSerie {
 		return startIdx;
 	}
 	
+	protected ArchivePoint  newEmptyPoint(Long timestamp){
+		ArchivePoint p = new ArchivePoint();
+		p.timestamp = timestamp;
+		return p;
+	}
 	
 	/**
 	 * Recherche d'une serie de point
@@ -481,8 +481,14 @@ public abstract class ArchiveDataSerie {
 	 */
 	public List<ArchivePoint> getPoints(Long startTimestamp, Long endTimestamp) throws IOException{
 		if(startTimestamp==null) startTimestamp = (long)0;
-		
 		List<ArchivePoint> result = new ArrayList<ArchivePoint>();
+		
+		if(startTimestamp!=null && endTimestamp != null && startTimestamp >= endTimestamp) return result;
+		
+		//On cale starttimestamp sur les valaeurs de l'archive
+		startTimestamp -= (startTimestamp-t0)%step;
+		
+		
 		
 		long len = this.archiveFile.length();
 		
@@ -490,38 +496,60 @@ public abstract class ArchiveDataSerie {
 		Long startIdx = getTimestampPosition(startTimestamp);
 		
 		//Fin
-		if(endTimestamp == null || endTimestamp > lastTimestamp) endTimestamp = lastTimestamp;
+		if(endTimestamp == null) endTimestamp = (new Date()).getTime()/1000;
 		
-		if(startIdx < len){
-			RandomAccessFile raf = openFile("r");
-			raf.seek(startIdx);
-			for(long t=startTimestamp;t<endTimestamp;t+=step){
-				startIdx+=getRecordLen();
-				System.out.println("pos="+startIdx);
-				
-				ArchivePoint point = readPoint(raf);
-				point.timestamp = t;
-				result.add(point);
+		//currrentStep
+		ArchivePoint curStepPoint = this.currentStepPoint();
+		
+		long cursorTimestamp = startTimestamp;
+		long cursorIdx = startIdx;
+		RandomAccessFile raf = null;
+		while(cursorTimestamp < endTimestamp){
+			ArchivePoint point = null;
+			if(cursorIdx > len-getRecordLen()){
+				//le curseur n'est pas dans le fichier. Cause possible : absence de valeurs enregistrée à la fin
+				if(cursorTimestamp == curStepPoint.timestamp) point = curStepPoint;
+				else if(cursorTimestamp > curStepPoint.timestamp){
+					//On est au dela de curStep : on arrête sans mettre de point vides
+					break;
+				}
+				else point = newEmptyPoint(cursorTimestamp);
 			}
-			raf.close();
+			else{
+				//Ouverture du fichier si besoin
+				if(raf==null) raf = openFile("r");
+				//Postionnement dans le fichier si besoin
+				if(raf.getChannel().position() != cursorIdx) raf.seek(cursorIdx);
+				
+				//On lit le point dans le fichier
+				point = readPoint(raf);
+			}
+			
+			point.timestamp = cursorTimestamp;
+			result.add(point);
+			cursorTimestamp += step;
+			cursorIdx += getRecordLen();
+			
 		}
-		
-		if(endTimestamp==null || lastTimestamp==null || endTimestamp >= lastTimestamp){
-			//Ajout de la valeur en cours (non enregistree dans le fichier
-			ArchivePoint point = this.currentStepPoint();
-			if(point!=null && point.value!=null) result.add(point);
-		}
+		if(raf != null) raf.close();
 		
 		return result;
 	}
 	
 	public List<ArchivePoint> getLastPoints(int nb) throws IOException{
 		Long startTimestamp = null;
-		if(this.lastTimestamp != null){
-			if(this.currentStepPoint()!=null && nb>0) nb--;
-			startTimestamp = this.lastTimestamp - nb*this.step;
-			if(startTimestamp<this.t0) startTimestamp = this.t0;
+		if(nb==0) return new ArrayList();
+		
+		ArchivePoint curStepPoint = currentStepPoint();
+		
+		if(curStepPoint!=null){
+			nb--;
+			startTimestamp = curStepPoint.timestamp - nb*this.step;
 		}
+		else if(this.lastTimestamp != null){
+			startTimestamp = this.lastTimestamp - nb*this.step;
+		}
+		if(startTimestamp<this.t0) startTimestamp = this.t0;
 		
 		return getPoints(startTimestamp,null);
 	}

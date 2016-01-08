@@ -1,7 +1,10 @@
 package com.mireau.timeseries;
 
 import java.math.RoundingMode;
+import java.text.DateFormat;
 import java.text.NumberFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * Classe qui represente un point de l'archive
@@ -21,10 +24,16 @@ public class ArchivePoint{
 		numberFormater.setMinimumIntegerDigits(0);
 		numberFormater.setMaximumIntegerDigits(10);
 	}
-	public String json(){
-		return  "{v="+numberFormater.format(this.value)+"}";
+	
+	public String json(DateFormat dateFormat){
+		return  "{t='"+dateFormat.format(new Date(this.timestamp))+"' v="+numberFormater.format(this.value)+"}";
 	}
-	public String csv(){
-		return  String.valueOf(this.value);
+	
+	public String csv(DateFormat dateFormat){
+		return  dateFormat.format(new Date(this.timestamp*1000))
+				+";"+(this.value==null ? "" : numberFormater.format(this.value));
+	}
+	public String toString(){
+		return csv(new SimpleDateFormat("yyyyMMdd-HHmmss"));
 	}
 }

@@ -84,6 +84,14 @@ public class TimeSeriesDB {
 		return null;
 	}
 	
+	/**
+	 * Crée une archive (le fichier n'existe pas déjà)
+	 * @param step
+	 * @param type
+	 * @return
+	 * @throws IOException
+	 * @throws ArchiveInitException
+	 */
 	public ArchiveDataSerie createArchive(int step, Type type) throws IOException, ArchiveInitException{
 		ArchiveDataSerie archive = getArchive(step,type);
 		if(archive!=null) throw new ArchiveInitException("l'archive existe deja");
