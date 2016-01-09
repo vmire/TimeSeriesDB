@@ -263,6 +263,10 @@ public abstract class ArchiveDataSerie {
 			if(mod != 0){
 				logger.warning("Taille de fichier anormale ("+len+"). Retour a "+(len-mod));
 				len -= mod;
+				adf.close(); //Il est en mode lecture uniquement
+				adf = openFile("rw");
+				adf.setLength(len);
+				//TODO : c'est quand même bizarre. corruption d'archive probable. il faudrait reconstruire
 			}
 			
 			//Nb d'enregistrements
@@ -274,8 +278,6 @@ public abstract class ArchiveDataSerie {
 			
 			logger.fine(" nb steps: "+nbEnreg);
 		}
-		
-		adf.seek(len);
 		
 		//On relache le fichier
 		adf.close();
