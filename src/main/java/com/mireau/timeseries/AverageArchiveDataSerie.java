@@ -16,11 +16,11 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 	/** nombre de valeurs pour le step en cours (pour le type AVERAGE uniquement)*/
 	int stepNb;
 	/** dernière valeur sur le step en cours*/
-	Float stepLast = null;
+	Float stepLast;
 	/** valeur mini sur le step en cours*/
-	Float stepMin = null;
+	Float stepMin;
 	/** valeur maxi sur le step en cours*/
-	Float stepMax = null;
+	Float stepMax;
 	/** timestamp du debut de step en cours */
 	Long stepTimestamp;
 	

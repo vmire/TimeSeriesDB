@@ -14,26 +14,17 @@ public class ArchivePoint{
 	long timestamp;
 	public Float getValue(){ return this.value; }
 	
-	protected NumberFormat numberFormater;
-	public ArchivePoint(){
-		numberFormater = NumberFormat.getInstance();
-		numberFormater.setGroupingUsed(false);
-		numberFormater.setRoundingMode(RoundingMode.HALF_DOWN);
-		numberFormater.setMinimumFractionDigits(0);
-		numberFormater.setMaximumFractionDigits(5);
-		numberFormater.setMinimumIntegerDigits(0);
-		numberFormater.setMaximumIntegerDigits(10);
-	}
 	
-	public String json(DateFormat dateFormat){
+	
+	public String json(DateFormat dateFormat, NumberFormat numberFormater){
 		return  "{t='"+dateFormat.format(new Date(this.timestamp))+"' v="+numberFormater.format(this.value)+"}";
 	}
 	
-	public String csv(DateFormat dateFormat){
+	public String csv(DateFormat dateFormat, NumberFormat numberFormater){
 		return  dateFormat.format(new Date(this.timestamp*1000))
 				+";"+(this.value==null ? "" : numberFormater.format(this.value));
 	}
 	public String toString(){
-		return csv(new SimpleDateFormat("yyyyMMdd-HHmmss"));
+		return csv(new SimpleDateFormat("yyyyMMdd-HHmmss"), NumberFormat.getInstance());
 	}
 }

@@ -9,7 +9,9 @@ import java.lang.Thread.State;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
+import java.math.RoundingMode;
 import java.text.DateFormat;
+import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -134,36 +136,24 @@ public class Test {
 					}
 					try{
 						int step = Integer.parseInt(terms[1]);
-						
 						String periodStr = terms[2];
-						char unit = periodStr.charAt(periodStr.length()-1);
-						int multipl = 1;
-						if(unit=='h' || unit=='d' || unit=='w' || unit=='m' || unit=='y'){
-							periodStr = periodStr.substring(0,periodStr.length()-1);
-							switch(unit){
-								case 'h': multipl = 3600; break;
-								case 'd': multipl = 86400; break;
-								case 'w': multipl = 604800; break;
-								case 'm': multipl = 2678400; break;
-								case 'y': multipl = 31536000; break;
-							}
-						}
-						int period = Integer.parseInt(periodStr) * multipl;
-						Long start = null;
-						if(terms.length>3) start = Long.parseLong(terms[3]);
-						Long end = null;
-						if(start==null){
-							end = new Date().getTime()/1000;
-							start = end-period;
-						}
-						else{
-							end = start+period;
-						}
-						List<ArchivePoint> list = ts.getArchive(step, Type.AVERAGE).getPoints(start,end);
+						Long start = (terms.length>3 ? Long.parseLong(terms[3]) : null);
+						Type type = Type.AVERAGE;
+						
+						
+						
+						List<ArchivePoint> points = ts.select(step,type,start,periodStr);
+						
+						NumberFormat numberFormater = NumberFormat.getInstance();
+						numberFormater.setGroupingUsed(false);
+						numberFormater.setRoundingMode(RoundingMode.HALF_DOWN);
+						numberFormater.setMinimumFractionDigits(0);
+						numberFormater.setMaximumFractionDigits(5);
+						numberFormater.setMinimumIntegerDigits(0);
+						numberFormater.setMaximumIntegerDigits(10);
 						DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss");
-						for (ArchivePoint point : list) {
-							System.out.println(point.csv(dateFormat));
-						}
+						
+						ts.exportCSV(points, System.out, dateFormat, numberFormater);
 					}
 					catch(NumberFormatException e){
 						System.out.println("arguments malformé");
@@ -215,10 +205,7 @@ public class Test {
 		System.out.println("   build : build 15mn average archive");
 		System.out.println("   put   : put value in the timeserie");
 		System.out.println("   last  : get last value");
-		System.out.println("   get   : get all points on 15mn archive");
-		System.out.println("   ");
-		System.out.println("   ");
-		System.out.println("   ");
+		System.out.println("   get   : request archive points");
 		System.out.println("   ");
 	}
 	

@@ -2,7 +2,9 @@ package com.mireau.timeseries;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.PrintStream;
+import java.text.DateFormat;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
@@ -31,7 +33,7 @@ public class TimeSeriesDB {
 	/** Liste des archives associées */
 	List<ArchiveDataSerie> archives;
 	
-	/** R�pertoire de stockage des fichiers de donn�es */
+	/** Répertoire de stockage des fichiers de données */
 	private File directory;
 	
 	
@@ -153,4 +155,56 @@ public class TimeSeriesDB {
 		return rawDS.getLast();
 	}
 	
+	public List<ArchivePoint> select(int step, Type type, Long start, int period) throws ArchiveInitException, IOException{
+		Long end = null;
+		if(start==null){
+			end = new Date().getTime()/1000;
+			start = end-period;
+		}
+		else{
+			end = start+period;
+		}
+		ArchiveDataSerie archive = this.getArchive(step, type);
+		if(archive==null)
+			throw new ArchiveInitException("Erreur : aucune archive avec step="+step+" type="+type);
+		
+		List<ArchivePoint> list = archive.getPoints(start,end);
+		return list;
+	}
+	
+	public List<ArchivePoint> select(int step, Type type, Long start, String periodStr) throws ArchiveInitException, IOException{
+		char unit = periodStr.charAt(periodStr.length()-1);
+		int multipl = 1;
+		if(unit=='h' || unit=='d' || unit=='w' || unit=='m' || unit=='y'){
+			periodStr = periodStr.substring(0,periodStr.length()-1);
+			switch(unit){
+				case 'h': multipl = 3600; break;
+				case 'd': multipl = 86400; break;
+				case 'w': multipl = 604800; break;
+				case 'm': multipl = 2678400; break;
+				case 'y': multipl = 31536000; break;
+			}
+		}
+		int period = Integer.parseInt(periodStr) * multipl;
+		
+		return select(step,type,start,period);
+	}
+	
+	
+	public void exportCSV(final List<ArchivePoint> points, PrintStream out, DateFormat dateFormat, NumberFormat numberFormat) throws ArchiveInitException, IOException{
+		for (ArchivePoint point : points) {
+			out.println(point.csv(dateFormat,numberFormat));
+		}
+	}
+	
+	public void exportJSON(final List<ArchivePoint> points, PrintStream out, DateFormat dateFormat, NumberFormat numberFormat) throws ArchiveInitException, IOException{
+		out.print("[");
+		boolean first = true;
+		for (ArchivePoint point : points) {
+			if(!first) out.print(",");
+			else first = false;
+			out.println(point.json(dateFormat,numberFormat));
+		}
+		out.println("]");
+	}
 }

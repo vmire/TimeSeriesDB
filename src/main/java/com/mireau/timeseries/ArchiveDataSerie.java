@@ -55,7 +55,7 @@ public abstract class ArchiveDataSerie {
 	
 	static SimpleDateFormat sdf = new SimpleDateFormat("YYYY/MM/dd HH:mm:ss");
 	
-	enum Type{
+	public enum Type{
 		AVERAGE, LAST, CUMUL
 	}
 	
