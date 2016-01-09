@@ -1,6 +1,5 @@
 package com.mireau.timeseries;
 
-import java.math.RoundingMode;
 import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;

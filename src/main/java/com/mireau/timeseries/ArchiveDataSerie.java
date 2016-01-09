@@ -538,7 +538,7 @@ public abstract class ArchiveDataSerie {
 	
 	public List<ArchivePoint> getLastPoints(int nb) throws IOException{
 		Long startTimestamp = null;
-		if(nb==0) return new ArrayList();
+		if(nb==0) return new ArrayList<ArchivePoint>();
 		
 		ArchivePoint curStepPoint = currentStepPoint();
 		

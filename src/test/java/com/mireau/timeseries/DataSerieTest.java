@@ -136,7 +136,7 @@ public class DataSerieTest {
 		//on est censé n'avoir aucun enregistrement dans l'archive de 5mn
 		long expectedLen = ArchiveDataSerie.HEADER1_LEN;
 		if(archive5.getWriteStartegy() == ArchiveDataSerie.WriteStrategy.ALL_POINTS)  expectedLen += archive5.currentStepDataLength(); 
-		Assert.assertEquals(ArchiveDataSerie.HEADER1_LEN,archive5File.length());
+		Assert.assertEquals(expectedLen,archive5File.length());
 		
 		/*
 		 * Deuxième enregistrement
@@ -147,7 +147,7 @@ public class DataSerieTest {
 		Assert.assertEquals(rawFile.length(), RawDataSerie.DATA_LEN * nb);
 		
 		//on est censé n'avoir aucun enregistrement dans l'archive de 5mn
-		Assert.assertEquals(ArchiveDataSerie.HEADER1_LEN + archive5.currentStepDataLength(),archive5File.length());
+		Assert.assertEquals(expectedLen,archive5File.length());
 				
 		/*
 		 * Troisième enregistrement

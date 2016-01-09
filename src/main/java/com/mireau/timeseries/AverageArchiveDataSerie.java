@@ -174,7 +174,7 @@ public class AverageArchiveDataSerie extends ArchiveDataSerie {
 		}
 		
 		//On ferme le fichier
-		if(!keepFileOpened) adf.close();
+		if(adf != null && !keepFileOpened) adf.close();
 	}
 	
 	
