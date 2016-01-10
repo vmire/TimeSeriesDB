@@ -23,9 +23,9 @@ import java.util.logging.Logger;
  *     valeur (signed)      : float(4 bytes)
  *     pas de caractère de séparation
  */
-public class RawDataSerie {
+public class RawTimeSerie {
 	
-	static Logger logger = Logger.getLogger(RawDataSerie.class.getName());
+	static Logger logger = Logger.getLogger(RawTimeSerie.class.getName());
 	static int DATA_LEN = 8;
 	static SimpleDateFormat sdf = new SimpleDateFormat("YYYY/MM/dd HH:mm:ss");
 	
@@ -35,7 +35,7 @@ public class RawDataSerie {
 	/** dernier enregistrement */
 	protected Entry last;
 	
-	protected RawDataSerie(File dir, String id){
+	protected RawTimeSerie(File dir, String id){
 		this.directory = dir;
 		this.id = id;
 	}
@@ -159,7 +159,7 @@ public class RawDataSerie {
 		long timestamp;
 		float value;
 		public String toString(){
-			return RawDataSerie.sdf.format(new Date(timestamp*1000))+":"+value;
+			return RawTimeSerie.sdf.format(new Date(timestamp*1000))+":"+value;
 		}
 	}
 	

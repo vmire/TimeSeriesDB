@@ -13,7 +13,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Logger;
 
-import com.mireau.timeseries.RawDataSerie.Entry;
+import com.mireau.timeseries.RawTimeSerie.Entry;
 
 /** 
  * Enregistrement des données d'archives consolidées sur un périodicité fixée
@@ -23,29 +23,42 @@ import com.mireau.timeseries.RawDataSerie.Entry;
  * 
  *   En tête commun: (16 bytes)
  *     step      int   / 4 bytes
- *     type      int   / 4 bytes (1:AVERAGE, 2:LAST, 3:CUMUL)
+ *     type      int   / 4 bytes (1:AVERAGE, 2:ABS_COUNTER, 3:REL_COUNTER)
  *     timestamp long  / 8 bytes
  *     
- *   Données sur le step en cours (28 bytes)
- *     stepTimestamp   / 8 bytes : timestamp du step en cours
- *     stepSum   double/ 8 bytes : Somme des valeurs en cours
- *     stepNb    int   / 4 bytes : Nombre de valeurs en cours
- *     stepMin   float / 4 bytes
- *     stepMax   float / 4 bytes
+ *   Type AVERAGE: (+13 bytes = 44bytes)
+ *      Description:
+ *        Pour enregistrer des valeurs telles que des température
+ *        Similaire au type GAUGE de RRDTool
+ *   	En-tête : Données sur le step en cours (28 bytes)
+ *   	  stepTimestamp   / 8 bytes : timestamp du step en cours
+ *   	  stepSum   double/ 8 bytes : Somme des valeurs en cours
+ *   	  stepNb    int   / 4 bytes : Nombre de valeurs en cours
+ *   	  stepMin   float / 4 bytes
+ *   	  stepMax   float / 4 bytes
+ *   	Enregistrements: (13 bytes)
+ *		  Defined  bool  / 1 byte (0:NULL 1:valeur)
+ *        Value    float / 4 bytes
+ *        Min	   float / 4 bytes
+ *        Max	   float / 4 bytes
  *     
- *   Enreg AVERAGE: (13 bytes)
- *     Defined  bool  / 1 byte (0:NULL 1:valeur)
- *     Value    float / 4 bytes
- *     Min		float / 4 bytes
- *     Max		float / 4 bytes
- *   Enreg LAST: (5 bytes)
- *     Defined  bool  / 1 byte (0:NULL 1:valeur)
- *     Value    float / 4 bytes
- *   Enreg CUMUL: (5 bytes)
- *     Defined  bool  / 1 byte (0:NULL 1:valeur)
- *     Value    float / 4 bytes
+ *   Type ABS_COUNTER: 
+ *      Description:
+ *        Enregistrement de compteurs en valeur absolue (ex: compteur électrique)
+ *        Part du principe que la valeur est uniquement croissante, sauf en cas d'overflow où le compteur est remis à 0.
+ *        Similaire au type COUNTER de RRDTool
+ *      Enregistrements: (5 bytes)
+ *        Defined  bool  / 1 byte (0:NULL 1:valeur)
+ *        Value    float / 4 bytes
+ *     
+ *   Type REL_COUNTER:
+ *      Description:
+ *        Enregistrement de compteurs en valeur relative (impulsions depuis le dernier enregistrement)
+ *      Enregistrements: (5 bytes)
+ *        Defined  bool  / 1 byte (0:NULL 1:valeur)
+ *        Value    float / 4 bytes
  */
-public abstract class ArchiveDataSerie {
+public abstract class ArchiveTimeSerie {
 
 	static int HEADER1_LEN = 16;
 	
@@ -56,7 +69,7 @@ public abstract class ArchiveDataSerie {
 	static SimpleDateFormat sdf = new SimpleDateFormat("YYYY/MM/dd HH:mm:ss");
 	
 	public enum Type{
-		AVERAGE, LAST, CUMUL
+		AVERAGE, ABS_COUNTER, REL_COUNTER
 	}
 	
 	/**
@@ -78,7 +91,7 @@ public abstract class ArchiveDataSerie {
 	/** espacement des points dans la série (secondes) */
 	Integer step = null;
 	
-	static Logger logger = Logger.getLogger(ArchiveDataSerie.class.getName());
+	static Logger logger = Logger.getLogger(ArchiveTimeSerie.class.getName());
 	
 	/** Fichier archive */
 	protected File archiveFile;
@@ -99,7 +112,7 @@ public abstract class ArchiveDataSerie {
 	 * @throws IOException
 	 * @throws ArchiveInitException
 	 */
-	protected ArchiveDataSerie(File file, String id, Integer step) throws IOException, ArchiveInitException{
+	protected ArchiveTimeSerie(File file, String id, Integer step) throws IOException, ArchiveInitException{
 		this.id = id;
 		this.step = step;
 		this.archiveFile = file;
@@ -117,7 +130,7 @@ public abstract class ArchiveDataSerie {
 	 * @throws IOException
 	 * @throws ArchiveInitException
 	 */
-	protected ArchiveDataSerie(File file, String id, Integer step, WriteStrategy strategy) throws IOException, ArchiveInitException{
+	protected ArchiveTimeSerie(File file, String id, Integer step, WriteStrategy strategy) throws IOException, ArchiveInitException{
 		this(file,id,step);
 		this.writeStartegy = strategy;
 	}
@@ -127,8 +140,8 @@ public abstract class ArchiveDataSerie {
 	 * @throws ArchiveInitException 
 	 * @throws IOException 
 	 */
-	public static ArchiveDataSerie getArchive(File file, String id) throws IOException, ArchiveInitException{
-		ArchiveDataSerie archive = null;
+	public static ArchiveTimeSerie getArchive(File file, String id) throws IOException, ArchiveInitException{
+		ArchiveTimeSerie archive = null;
 		if(!file.exists() || file.length()<HEADER1_LEN) throw new ArchiveInitException("Le fichier archive "+file.getAbsolutePath()+" n'existe pas ou est vide");
 		RandomAccessFile f = new RandomAccessFile(file,"r");
 		int step = f.readInt();
@@ -145,7 +158,7 @@ public abstract class ArchiveDataSerie {
 	 * @throws IOException
 	 * @throws ArchiveInitException
 	 */
-	protected static void newArchiveFile(Integer step, ArchiveDataSerie.Type type, File file) throws IOException, ArchiveInitException{
+	protected static void newArchiveFile(Integer step, ArchiveTimeSerie.Type type, File file) throws IOException, ArchiveInitException{
 		if(step==null) throw new ArchiveInitException("step non initialisé");
 		
 		/*
@@ -175,7 +188,7 @@ public abstract class ArchiveDataSerie {
 		adf.writeInt(step);
 		
 		//Type
-		Integer t = ArchiveDataSerie.encodeType(type);
+		Integer t = ArchiveTimeSerie.encodeType(type);
 		adf.writeInt(t);
 		
 		//Timestamp a 0
@@ -191,8 +204,8 @@ public abstract class ArchiveDataSerie {
 	 * @throws ArchiveInitException 
 	 * @throws IOException 
 	 */
-	public static ArchiveDataSerie getArchive(File file, String id, Integer step, Type type) throws IOException, ArchiveInitException{
-		ArchiveDataSerie archive = null;
+	public static ArchiveTimeSerie getArchive(File file, String id, Integer step, Type type) throws IOException, ArchiveInitException{
+		ArchiveTimeSerie archive = null;
 		if(type == Type.AVERAGE) archive = new AverageArchiveDataSerie(file, id, step);
 		return archive;
 	}
@@ -320,16 +333,16 @@ public abstract class ArchiveDataSerie {
 	
 	protected static Integer encodeType(Type type){
 		if(type == Type.AVERAGE) return 1;
-		if(type == Type.LAST) return 2;
-		if(type == Type.CUMUL) return 3;
+		if(type == Type.ABS_COUNTER) return 2;
+		if(type == Type.REL_COUNTER) return 3;
 		else return null;
 	}
 	
 	private static Type decodeType(int type){
 		switch(type){
 			case 1: return Type.AVERAGE;
-			case 2: return Type.LAST;
-			case 3: return Type.CUMUL;
+			case 2: return Type.ABS_COUNTER;
+			case 3: return Type.REL_COUNTER;
 			default: return null;
 		}
 	}

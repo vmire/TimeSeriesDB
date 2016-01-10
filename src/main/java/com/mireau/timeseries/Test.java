@@ -20,8 +20,8 @@ import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
-import com.mireau.timeseries.ArchiveDataSerie.Type;
-import com.mireau.timeseries.RawDataSerie.Entry;
+import com.mireau.timeseries.ArchiveTimeSerie.Type;
+import com.mireau.timeseries.RawTimeSerie.Entry;
 
 
 public class Test {
@@ -29,7 +29,7 @@ public class Test {
 	static Logger logger;
 	static SimpleDateFormat sdf = new SimpleDateFormat("YYYY/MM/dd HH:mm:ss");
 	
-	static TimeSeriesDB ts;
+	static TimeSerie ts;
 	
 	public static void main(String[] params) {
 		InputStream is = null;
@@ -69,6 +69,8 @@ public class Test {
 				is.close();
 			}
 			
+			new TimeSeriesDB(new File("."));
+			
 			/*
 			 * Console
 			 */
@@ -91,7 +93,7 @@ public class Test {
 						continue;
 					}
 					String dbName = terms[1];
-					ts = new TimeSeriesDB(dbName,".");
+					ts = new TimeSerie(dbName,".");
 					
 					printStatus(ts);
 				}
@@ -209,7 +211,7 @@ public class Test {
 		System.out.println("   ");
 	}
 	
-	public static void printStatus(TimeSeriesDB ts) throws IOException{
+	public static void printStatus(TimeSerie ts) throws IOException{
 		SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/Y-HH:mm");
 		if(ts == null){
 			System.out.println("no opened time serie");
@@ -222,7 +224,7 @@ public class Test {
 		}	
 		else{
 			System.out.println("archives :");
-			for (ArchiveDataSerie archive : ts.archives) {
+			for (ArchiveTimeSerie archive : ts.archives) {
 				if(archive == null) continue;
 				System.out.println("   "+archive.archiveFile+" type:"+archive.type()+" step:"+archive.step/60+"min debut:"+sdf.format(new Date(archive.t0*1000))+" len="+archive.archiveFile.length()+" last="+archive.lastTimestamp);
 				if(archive instanceof AverageArchiveDataSerie){

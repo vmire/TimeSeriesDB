@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Date;
 
-public class AverageArchiveDataSerie extends ArchiveDataSerie {
+public class AverageArchiveDataSerie extends ArchiveTimeSerie {
 
 	static int ENREG_LEN = 13;
 	static int CURRENT_STEP_DATA_LENGTH = 28;

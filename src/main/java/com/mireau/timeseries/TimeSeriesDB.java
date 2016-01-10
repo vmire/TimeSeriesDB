@@ -1,210 +1,61 @@
 package com.mireau.timeseries;
 
 import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
-import java.io.PrintStream;
-import java.text.DateFormat;
-import java.text.NumberFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import java.util.logging.Logger;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.mireau.timeseries.ArchiveDataSerie.Type;
-import com.mireau.timeseries.RawDataSerie.Entry;
-
 /**
- * Base de données de séries de données chronologiques à intervale variable
- * 
- * 
+ * Classe principale de gestion de la base de données de series de données
  */
 public class TimeSeriesDB {
-	
-	Logger logger = Logger.getLogger(TimeSeriesDB.class.getName());
 
-	/** nom (identifiant) de la série */
-	private String id;
+	File dbDirectory;
+	ConcurrentMap<String, TimeSerie> timeseries;
 	
-	/** RawDataSerie */
-	RawDataSerie rawDS;
-	
-	/** Liste des archives associées */
-	List<ArchiveDataSerie> archives;
-	
-	/** Répertoire de stockage des fichiers de données */
-	private File directory;
-	
-	
-	
-	public TimeSeriesDB(String id, String dir) throws IOException, ArchiveInitException{
-		this(id,new File(dir));
+	public TimeSeriesDB(File dbDirectory) {
+		this.dbDirectory = dbDirectory;
+		init();
 	}
-	
-	public TimeSeriesDB(String id, File dir) throws IOException, ArchiveInitException{
-		this.id = id;
-		this.directory = dir;
+
+	public void init(){
+		timeseries = new ConcurrentHashMap<>();
 		
 		/*
-		 * Raw
+		 * Lecture du répertoire 
 		 */
-		rawDS = new RawDataSerie(directory,id);
-		
-		archives = new ArrayList<ArchiveDataSerie>();
-		
-		//On parcours le répertoire
-		File[] files = directory.listFiles();
-		Pattern filenamePattern = Pattern.compile("ts_"+id+"_[0-9]+[_a-zA-Z]*\\.ats", Pattern.CASE_INSENSITIVE);
-		for (File file : files) {
-			if(!filenamePattern.matcher(file.getName()).matches()) continue;
-			ArchiveDataSerie archive = ArchiveDataSerie.getArchive(file,id);
-			if(archive==null){
-				logger.warning("skip archive file : null");
-				continue;
+		Pattern rawFilenamePattern = Pattern.compile("ts_(.*)\\.rts", Pattern.CASE_INSENSITIVE);
+		dbDirectory.list(new FilenameFilter() {
+			@Override
+			public boolean accept(File dir, String filename) {
+				Matcher m = rawFilenamePattern.matcher(filename);
+				if(m.matches()){
+					System.out.println("db:"+m.group(1)+" "+dir.getAbsolutePath());
+					String id = m.group(1);
+					try {
+						TimeSerie ts = new TimeSerie(id,dir);
+						timeseries.put(id, ts);
+					} catch (IOException | ArchiveInitException e) {
+						e.printStackTrace();
+					}
+					return true;
+				}
+				else{
+					return false;
+				}
 			}
-			archives.add(archive);
-		}
+		});
 	}
 	
-	
-	public void close() throws IOException, ArchiveInitException{
-		rawDS.close();
-		for (ArchiveDataSerie archive : archives) {
-			if(archive !=null) archive.close();
-		}
+	public TimeSerie getTimeSerie(String name){
+		return timeseries.get(name);
 	}
 	
-	public boolean isClosed(){
-		return rawDS==null;
-	}
-	
-	public ArchiveDataSerie getArchive(int step, Type type){
-		for(ArchiveDataSerie a : archives) {
-			if(a.step==step && a.type()==type) return a;
-		}
-		return null;
-	}
-	
-	/**
-	 * Crée une archive (le fichier n'existe pas déjà)
-	 * @param step
-	 * @param type
-	 * @return
-	 * @throws IOException
-	 * @throws ArchiveInitException
-	 */
-	public ArchiveDataSerie createArchive(int step, Type type) throws IOException, ArchiveInitException{
-		ArchiveDataSerie archive = getArchive(step,type);
-		if(archive!=null) throw new ArchiveInitException("l'archive existe deja");
-		
-		String filename = "ts_"+id+"_"+step+".ats";
-		File file = new File(directory,filename);
-		if(file.exists()) throw new ArchiveInitException("le fichier "+file.getAbsolutePath()+" existe deja");
-		
-		ArchiveDataSerie.newArchiveFile(step, type, file);;
-		archive = ArchiveDataSerie.getArchive(file, this.id, step, type);
-		
-		archives.add(archive);
-		return archive;
-	}
-	
-	/**
-	 * Construit une archive a partir des données brutes 
-	 * @param step
-	 * @return ArchiveDataSerie
-	 * @throws ArchiveInitException 
-	 * @throws IOException 
-	 */
-	public void buildArchive(int step, Type type) throws IOException, ArchiveInitException{
-		ArchiveDataSerie archive = getArchive(step,type);
-		if(archive==null) archive = createArchive(step, type);
-		
-		if(rawDS!=null){
-			Iterator<Entry> iter = rawDS.iterator(null,null);
-			archive.build(iter);
-		}
-	}
-	
-	/**
-	 * Ajoute une valeur à la fin de la serie.
-	 * Le timestamp doit etre posterieur a tout autre point de la serie
-	 * @throws ArchiveInitException 
-	 */
-	public void post(Date date, float value) throws IOException, ArchiveInitException{
-		this.post(date.getTime()/1000,value);
-	}
-	public void post(Date date, double value) throws IOException, ArchiveInitException{
-		this.post(date.getTime()/1000,value);
-	}
-	public void post(long timestamp, float value) throws IOException, ArchiveInitException{
-		rawDS.post(timestamp,value);
-		for (ArchiveDataSerie archive : archives) {
-			archive.post(timestamp,value);
-		}
-	}
-	public void post(long timestamp, double value) throws IOException, ArchiveInitException{
-		post(timestamp,(float)value);
-	}
-	/**
-	 * Récupère la dernière valeur brute transmise
-	 * @return
-	 * @throws IOException 
-	 */
-	public Entry getLast() throws IOException{
-		return rawDS.getLast();
-	}
-	
-	public List<ArchivePoint> select(int step, Type type, Long start, int period) throws ArchiveInitException, IOException{
-		Long end = null;
-		if(start==null){
-			end = new Date().getTime()/1000;
-			start = end-period;
-		}
-		else{
-			end = start+period;
-		}
-		ArchiveDataSerie archive = this.getArchive(step, type);
-		if(archive==null)
-			throw new ArchiveInitException("Erreur : aucune archive avec step="+step+" type="+type);
-		
-		List<ArchivePoint> list = archive.getPoints(start,end);
-		return list;
-	}
-	
-	public List<ArchivePoint> select(int step, Type type, Long start, String periodStr) throws ArchiveInitException, IOException{
-		char unit = periodStr.charAt(periodStr.length()-1);
-		int multipl = 1;
-		if(unit=='h' || unit=='d' || unit=='w' || unit=='m' || unit=='y'){
-			periodStr = periodStr.substring(0,periodStr.length()-1);
-			switch(unit){
-				case 'h': multipl = 3600; break;
-				case 'd': multipl = 86400; break;
-				case 'w': multipl = 604800; break;
-				case 'm': multipl = 2678400; break;
-				case 'y': multipl = 31536000; break;
-			}
-		}
-		int period = Integer.parseInt(periodStr) * multipl;
-		
-		return select(step,type,start,period);
-	}
-	
-	
-	public void exportCSV(final List<ArchivePoint> points, PrintStream out, DateFormat dateFormat, NumberFormat numberFormat) throws ArchiveInitException, IOException{
-		for (ArchivePoint point : points) {
-			out.println(point.csv(dateFormat,numberFormat));
-		}
-	}
-	
-	public void exportJSON(final List<ArchivePoint> points, PrintStream out, DateFormat dateFormat, NumberFormat numberFormat) throws ArchiveInitException, IOException{
-		out.print("[");
-		boolean first = true;
-		for (ArchivePoint point : points) {
-			if(!first) out.print(",");
-			else first = false;
-			out.println(point.json(dateFormat,numberFormat));
-		}
-		out.println("]");
+	public Set<String> getTimeSeries(){
+		return timeseries.keySet();
 	}
 }
