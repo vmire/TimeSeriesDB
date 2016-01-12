@@ -11,16 +11,19 @@ import java.util.Date;
 public class ArchivePoint{
 	Float value = null;
 	long timestamp;
+	
+	public Date getDate(){ 
+		return new Date(this.timestamp*1000);
+	}
 	public Float getValue(){ return this.value; }
 	
 	
-	
 	public String json(DateFormat dateFormat, NumberFormat numberFormater){
-		return  "{t='"+dateFormat.format(new Date(this.timestamp))+"' v="+numberFormater.format(this.value)+"}";
+		return  "{t='"+dateFormat.format(new Date(this.timestamp*1000))+"' v="+numberFormater.format(this.value)+"}";
 	}
 	
 	public String csv(DateFormat dateFormat, NumberFormat numberFormater){
-		return  dateFormat.format(new Date(this.timestamp*1000))
+		return  dateFormat.format(getDate())
 				+";"+(this.value==null ? "" : numberFormater.format(this.value));
 	}
 	public String toString(){

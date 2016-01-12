@@ -38,11 +38,11 @@ public class TimeSerie {
 	
 	
 	
-	public TimeSerie(String id, String dir) throws IOException, ArchiveInitException{
+	protected TimeSerie(String id, String dir) throws IOException, ArchiveInitException{
 		this(id,new File(dir));
 	}
 	
-	public TimeSerie(String id, File dir) throws IOException, ArchiveInitException{
+	protected TimeSerie(String id, File dir) throws IOException, ArchiveInitException{
 		this.id = id;
 		this.directory = dir;
 		

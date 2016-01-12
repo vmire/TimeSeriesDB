@@ -12,8 +12,7 @@ public class AverageArchivePoint extends ArchivePoint {
 	
 	Float min = null;
 	Float max = null;
-	public Float getMin(){ return min; }
-	public Float getMax(){ return max; }
+	
 
 	/**
 	 * @override
@@ -36,4 +35,9 @@ public class AverageArchivePoint extends ArchivePoint {
 				+";"+(this.min==null ? "" : numberFormater.format(this.min))
 				+";"+(this.max==null ? "" : numberFormater.format(this.max));
 	}
+	
+	
+	
+	public Float getMin(){ return min; }
+	public Float getMax(){ return max; }
 }
