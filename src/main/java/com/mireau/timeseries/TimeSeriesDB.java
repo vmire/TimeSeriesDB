@@ -58,4 +58,8 @@ public class TimeSeriesDB {
 	public Collection<TimeSerie> getTimeSeries(){
 		return timeseries.values();
 	}
+
+	public ConcurrentMap<String, TimeSerie> getTimeseries() {
+		return timeseries;
+	}
 }
