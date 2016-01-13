@@ -28,7 +28,7 @@ public class TimeSeriesDB {
 		/*
 		 * Lecture du répertoire 
 		 */
-		Pattern rawFilenamePattern = Pattern.compile("ts_(.*)\\.rts", Pattern.CASE_INSENSITIVE);
+		final Pattern rawFilenamePattern = Pattern.compile("ts_(.*)\\.rts", Pattern.CASE_INSENSITIVE);
 		dbDirectory.list(new FilenameFilter() {
 			@Override
 			public boolean accept(File dir, String filename) {
