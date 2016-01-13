@@ -3,7 +3,7 @@ package com.mireau.timeseries;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.util.Set;
+import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
@@ -28,7 +28,7 @@ public class TimeSeriesDB {
 		/*
 		 * Lecture du répertoire 
 		 */
-		Pattern rawFilenamePattern = Pattern.compile("ts_(.*)\\.rts", Pattern.CASE_INSENSITIVE);
+		final Pattern rawFilenamePattern = Pattern.compile("ts_(.*)\\.rts", Pattern.CASE_INSENSITIVE);
 		dbDirectory.list(new FilenameFilter() {
 			@Override
 			public boolean accept(File dir, String filename) {
@@ -55,7 +55,7 @@ public class TimeSeriesDB {
 		return timeseries.get(name);
 	}
 	
-	public Set<String> getTimeSeries(){
-		return timeseries.keySet();
+	public Collection<TimeSerie> getTimeSeries(){
+		return timeseries.values();
 	}
 }

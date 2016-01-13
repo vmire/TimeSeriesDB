@@ -211,4 +211,12 @@ public class TimeSerie {
 		}
 		out.println("]");
 	}
+
+	public String getId() {
+		return id;
+	}
+
+	public List<ArchiveTimeSerie> getArchives() {
+		return archives;
+	}
 }
