@@ -258,4 +258,28 @@ public class AverageArchiveDataSerie extends ArchiveTimeSerie {
 		p.timestamp = timestamp;
 		return p;
 	}
+
+	public double getStepSum() {
+		return stepSum;
+	}
+
+	public int getStepNb() {
+		return stepNb;
+	}
+
+	public Float getStepLast() {
+		return stepLast;
+	}
+
+	public Float getStepMin() {
+		return stepMin;
+	}
+
+	public Float getStepMax() {
+		return stepMax;
+	}
+
+	public Long getStepTimestamp() {
+		return stepTimestamp;
+	}
 }

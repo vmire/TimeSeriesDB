@@ -577,4 +577,20 @@ public abstract class ArchiveTimeSerie {
 	public void setWriteStartegy(WriteStrategy writeStartegy) {
 		this.writeStartegy = writeStartegy;
 	}
+
+	public String getId() {
+		return id;
+	}
+
+	public Integer getStep() {
+		return step;
+	}
+
+	public Long getT0() {
+		return t0;
+	}
+
+	public Long getLastTimestamp() {
+		return lastTimestamp;
+	}
 }

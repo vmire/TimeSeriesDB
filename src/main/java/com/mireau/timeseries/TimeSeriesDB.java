@@ -52,7 +52,23 @@ public class TimeSeriesDB {
 	}
 	
 	public TimeSerie getTimeSerie(String name){
-		return timeseries.get(name);
+		TimeSerie ts = timeseries.get(name);
+		return ts;
+	}
+	
+	public TimeSerie getTimeSerie(String name, boolean createIfNotExists) throws IOException, ArchiveInitException{
+		TimeSerie ts = getTimeSerie(name);
+		if(ts==null && createIfNotExists){
+			//Création de la nouvelle TimeSerie
+			createTimeSerie(name);
+			timeseries.put(name,ts);
+		}
+		return ts;
+	}
+	
+	public TimeSerie createTimeSerie(String name) throws IOException, ArchiveInitException{
+		TimeSerie ts = new TimeSerie(name, this.dbDirectory);
+		return ts;
 	}
 	
 	public Collection<TimeSerie> getTimeSeries(){
