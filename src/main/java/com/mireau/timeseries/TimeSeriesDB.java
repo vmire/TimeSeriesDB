@@ -60,7 +60,7 @@ public class TimeSeriesDB {
 		TimeSerie ts = getTimeSerie(name);
 		if(ts==null && createIfNotExists){
 			//Création de la nouvelle TimeSerie
-			createTimeSerie(name);
+			ts = createTimeSerie(name);
 			timeseries.put(name,ts);
 		}
 		return ts;
