@@ -40,7 +40,7 @@ public class RawTimeSerie {
 		this.id = id;
 	}
 	
-	protected File getFile(){
+	public File getFile(){
 		String filename = "/ts_"+this.id+".rts";
 		return new File(this.directory,filename);
 	}
@@ -160,6 +160,12 @@ public class RawTimeSerie {
 		float value;
 		public String toString(){
 			return RawTimeSerie.sdf.format(new Date(timestamp*1000))+":"+value;
+		}
+		public long getTimestamp() {
+			return timestamp;
+		}
+		public float getValue() {
+			return value;
 		}
 	}
 	

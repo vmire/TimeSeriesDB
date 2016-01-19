@@ -219,4 +219,8 @@ public class TimeSerie {
 	public List<ArchiveTimeSerie> getArchives() {
 		return archives;
 	}
+
+	public RawTimeSerie getRawDS() {
+		return rawDS;
+	}
 }
