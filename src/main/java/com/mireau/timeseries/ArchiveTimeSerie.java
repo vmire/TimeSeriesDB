@@ -244,7 +244,7 @@ public abstract class ArchiveTimeSerie {
 		 * Type
 		 */
 		int t = adf.readInt();
-		if(decodeType(t) != this.type()) throw new ArchiveInitException("incoherence de type d'archive");
+		if(decodeType(t) != this.getType()) throw new ArchiveInitException("incoherence de type d'archive");
 		
 		/*
 		 * Timestamp de debut
@@ -347,7 +347,7 @@ public abstract class ArchiveTimeSerie {
 		}
 	}
 	
-	public Type type(){
+	public Type getType(){
 		if(this instanceof AverageArchiveDataSerie) return Type.AVERAGE;
 		else return null;
 	}
@@ -586,8 +586,8 @@ public abstract class ArchiveTimeSerie {
 		return step;
 	}
 
-	public Long getT0() {
-		return t0;
+	public Date getT0() {
+		return (t0==null ? null : new Date(t0*1000));
 	}
 
 	public Long getLastTimestamp() {

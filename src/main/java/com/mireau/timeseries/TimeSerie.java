@@ -85,7 +85,7 @@ public class TimeSerie {
 	
 	public ArchiveTimeSerie getArchive(int step, Type type){
 		for(ArchiveTimeSerie a : archives) {
-			if(a.step==step && a.type()==type) return a;
+			if(a.step==step && a.getType()==type) return a;
 		}
 		return null;
 	}
