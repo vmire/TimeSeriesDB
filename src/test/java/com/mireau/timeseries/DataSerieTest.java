@@ -186,7 +186,6 @@ public class DataSerieTest {
 		 * construction d'une archive 15 mn. Elle doit récupérer les valeurs brutes déjà enregistrées
 		 */
 		ArchiveTimeSerie archive15 = ts.createArchive(15*60, Type.AVERAGE);
-		ts.buildArchive(15*60, Type.AVERAGE);
 		File archive15File = new File(DIR+"/ts_"+TEST_SERIE_NAME+"_"+(15*60)+".ats");
 		Assert.assertTrue(archive15File.exists());
 		

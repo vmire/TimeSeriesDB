@@ -108,6 +108,7 @@ public class TimeSerie {
 		
 		ArchiveTimeSerie.newArchiveFile(step, type, file);;
 		archive = ArchiveTimeSerie.getArchive(file, this.id, step, type);
+		buildArchive(archive);
 		
 		archives.add(archive);
 		return archive;
@@ -120,10 +121,7 @@ public class TimeSerie {
 	 * @throws ArchiveInitException 
 	 * @throws IOException 
 	 */
-	public void buildArchive(int step, Type type) throws IOException, ArchiveInitException{
-		ArchiveTimeSerie archive = getArchive(step,type);
-		if(archive==null) archive = createArchive(step, type);
-		
+	public void buildArchive(ArchiveTimeSerie archive) throws IOException, ArchiveInitException{
 		if(rawDS!=null){
 			Iterator<Entry> iter = rawDS.iterator(null,null);
 			archive.build(iter);

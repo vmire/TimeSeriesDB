@@ -105,7 +105,8 @@ public class Test {
 					printStatus(ts);
 				}
 				else if ("build".equalsIgnoreCase(verb)) {
-					ts.buildArchive(15*60, Type.AVERAGE);
+					ArchiveTimeSerie archive = ts.getArchive(15*60, Type.AVERAGE);
+					ts.buildArchive(archive);
 				}
 				else if ("put".equalsIgnoreCase(verb)) {
 					if(terms.length < 2){

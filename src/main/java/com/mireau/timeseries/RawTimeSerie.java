@@ -40,9 +40,11 @@ public class RawTimeSerie {
 		this.id = id;
 	}
 	
-	public File getFile(){
+	public File getFile() throws IOException{
 		String filename = "/ts_"+this.id+".rts";
-		return new File(this.directory,filename);
+		File f = new File(this.directory,filename);
+		f.createNewFile();		//Vérifie si le fichier n'existe pas deja
+		return f;
 	}
 	
 	protected void close(){
@@ -146,9 +148,9 @@ public class RawTimeSerie {
 	 * @param beginTimestamp
 	 * @param endTimestamp
 	 * @return
-	 * @throws FileNotFoundException
+	 * @throws IOException 
 	 */
-	public Iterator<Entry> iterator(Long beginTimestamp, Long endTimestamp) throws FileNotFoundException{
+	public Iterator<Entry> iterator(Long beginTimestamp, Long endTimestamp) throws IOException{
 		return new RDSIterator(getFile(),beginTimestamp,endTimestamp);
 	}
 	
