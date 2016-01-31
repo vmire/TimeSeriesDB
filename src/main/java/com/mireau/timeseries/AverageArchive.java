@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Date;
 
-public class AverageArchiveDataSerie extends ArchiveTimeSerie {
+public class AverageArchive extends Archive {
 
 	static int ENREG_LEN = 13;
 	static int CURRENT_STEP_DATA_LENGTH = 28;
@@ -26,7 +26,7 @@ public class AverageArchiveDataSerie extends ArchiveTimeSerie {
 	
 	
 	
-	public AverageArchiveDataSerie(File file, String id, Integer step) throws IOException, ArchiveInitException {
+	public AverageArchive(File file, String id, Integer step) throws IOException, ArchiveInitException {
 		super(file, id, step);
 	}
 
@@ -42,15 +42,21 @@ public class AverageArchiveDataSerie extends ArchiveTimeSerie {
 	 * @throws IOException 
 	 * @throws ArchiveInitException 
 	 */
-	protected synchronized void writeCurrentStepData(RandomAccessFile raf) throws IOException, ArchiveInitException{
+	protected void writeCurrentStepData(RandomAccessFile raf) throws IOException, ArchiveInitException{
 		if(stepTimestamp==null) throw new ArchiveInitException("stepTimestamp non initialisé");
-		logger.fine("write current step vars : "+sdf.format(new Date((long)stepTimestamp*1000))+" nb="+stepNb+" sum="+stepSum);
-		raf.seek(CUR_STEP_RECORD_POS);
-		raf.writeLong(stepTimestamp);
-		raf.writeDouble(stepSum);
-		raf.writeInt(stepNb);
-		raf.writeFloat(stepMin==null ? 0 : stepMin);
-		raf.writeFloat(stepMax==null ? 0 : stepMax);
+		lock.writeLock().lock();
+		try{
+			logger.fine("write current step vars : "+sdf.format(new Date((long)stepTimestamp*1000))+" nb="+stepNb+" sum="+stepSum);
+			raf.seek(CUR_STEP_RECORD_POS);
+			raf.writeLong(stepTimestamp);
+			raf.writeDouble(stepSum);
+			raf.writeInt(stepNb);
+			raf.writeFloat(stepMin==null ? 0 : stepMin);
+			raf.writeFloat(stepMax==null ? 0 : stepMax);
+		}
+		finally{
+			lock.writeLock().unlock();
+		}
 	}
 	
 	/**
@@ -62,10 +68,12 @@ public class AverageArchiveDataSerie extends ArchiveTimeSerie {
 		stepNb = 0;
 		stepMin = null;
 		stepMax = null;
-	} 
+	}
+	
 	/**
 	 * Lecture des données sur le step en cours
 	 */
+	@Override
 	protected void readCurrentStepData(RandomAccessFile adf) throws IOException{
 		adf.seek(CUR_STEP_RECORD_POS);
 		
@@ -126,55 +134,62 @@ public class AverageArchiveDataSerie extends ArchiveTimeSerie {
 	@Override
 	protected void post(long timestamp, float value, RandomAccessFile adf) throws IOException, ArchiveInitException{
 		boolean keepFileOpened = adf!=null;
+		lock.writeLock().lock();
 		
-		if(stepTimestamp!=null && stepTimestamp>0 && timestamp < stepTimestamp){
-			logger.warning("Nouvelle valeur anterieure au step en cours (cur step:"+sdf.format(new Date(stepTimestamp*1000))+" new value:"+sdf.format(new Date(timestamp*1000))+")");
+		try{
+			if(stepTimestamp!=null && stepTimestamp>0 && timestamp < stepTimestamp){
+				logger.warning("Nouvelle valeur anterieure au step en cours (cur step:"+sdf.format(new Date(stepTimestamp*1000))+" new value:"+sdf.format(new Date(timestamp*1000))+")");
+			}
+			
+			if(stepTimestamp==null || stepTimestamp==0){
+				//Calcul du timestamp d'origine de l'archive : arrondi au step immédiatement inférieur
+				stepTimestamp = getTimestampOrigine(timestamp);
+				this.t0 = stepTimestamp;
+				logger.fine("write start timestamp");
+				//ecriture du timestamp dans l'en-tête
+				if(adf==null) adf = openFileForWriting(true);
+				adf.seek(8);	//on se positionne sur le champ timestamp de début
+				adf.writeLong(stepTimestamp);
+			}
+			else if(timestamp >= stepTimestamp+step){
+				/*
+				 * Changement de step -> écriture
+				 */	
+				if(adf==null) adf = openFileForWriting(true);
+				this.writePoint(adf);
+			
+				this.stepSum = 0;
+				this.stepNb = 0;
+				this.stepMin = null;
+				this.stepMax = null;
+			
+				long nbSteps = (timestamp - lastTimestamp)/step;
+				this.stepTimestamp = this.lastTimestamp + nbSteps*step;
+				logger.fine("nouveau step : "+sdf.format(new Date(stepTimestamp*1000)));
+			}
+			
+			this.stepLast = value;
+		
+			this.stepSum += value;
+			this.stepNb++;
+			if(this.stepMin==null || value < this.stepMin) this.stepMin = value;
+			if(this.stepMax==null || value > this.stepMax) this.stepMax = value;
+			
+			logger.fine("add to current step : "+stepLast+" nb="+stepNb+" sum="+stepSum);
+			
+			if(this.writeStartegy == WriteStrategy.ALL_POINTS){
+				//On écrit systématiquement le données du step en cours
+				//Plus sûr, mais moins performant
+				if(adf==null) adf = openFileForWriting(true);
+				writeCurrentStepData(adf);
+			}
 		}
-		
-		if(stepTimestamp==null || stepTimestamp==0){
-			//Calcul du timestamp d'origine de l'archive : arrondi au step immédiatement inférieur
-			stepTimestamp = getTimestampOrigine(timestamp);
-			logger.fine("wite start timestamp");
-			//ecriture du timestamp dans l'en-tête
-			if(adf==null) adf = openFile("rw");
-			adf.seek(8);	//on se positionne sur le champ timestamp de début
-			adf.writeLong(stepTimestamp);
+		finally{
+			//On ferme le fichier
+			releaseFile();
+			if(adf != null && !keepFileOpened) adf.close();
+			lock.writeLock().unlock();
 		}
-		else if(timestamp >= stepTimestamp+step){
-			/*
-			 * Changement de step -> écriture
-			 */	
-			if(adf==null) adf = openFile("rw");
-			this.writePoint(adf);
-		
-			this.stepSum = 0;
-			this.stepNb = 0;
-			this.stepMin = null;
-			this.stepMax = null;
-		
-			long nbSteps = (timestamp - lastTimestamp)/step;
-			this.stepTimestamp = this.lastTimestamp + nbSteps*step;
-			logger.fine("nouveau step : "+sdf.format(new Date(stepTimestamp*1000)));
-		}
-		
-		this.stepLast = value;
-	
-		this.stepSum += value;
-		this.stepNb++;
-		if(this.stepMin==null || value < this.stepMin) this.stepMin = value;
-		if(this.stepMax==null || value > this.stepMax) this.stepMax = value;
-		
-		logger.fine("add to current step : "+stepLast+" nb="+stepNb+" sum="+stepSum);
-		
-		if(this.writeStartegy == WriteStrategy.ALL_POINTS){
-			//On écrit systématiquement le données du step en cours
-			//Plus sûr, mais moins performant
-			if(adf==null) adf = openFile("rw");
-			writeCurrentStepData(adf);
-		}
-		
-		//On ferme le fichier
-		if(adf != null && !keepFileOpened) adf.close();
 	}
 	
 	
@@ -190,7 +205,7 @@ public class AverageArchiveDataSerie extends ArchiveTimeSerie {
 		long len = adf.length();
 		
 		
-		if(len<HEADER1_LEN + AverageArchiveDataSerie.CURRENT_STEP_DATA_LENGTH){
+		if(len<HEADER1_LEN + AverageArchive.CURRENT_STEP_DATA_LENGTH){
 			/*
 			 * Premier enregistrement de l'archive
 			 */
@@ -242,6 +257,7 @@ public class AverageArchiveDataSerie extends ArchiveTimeSerie {
 	 * Lit le point dans le fichier, a la position du curseur
 	 * @throws IOException 
 	 */
+	@Override
 	protected ArchivePoint readPoint(RandomAccessFile raf) throws IOException{
 		AverageArchivePoint p = new AverageArchivePoint();
 		if(raf.readBoolean()){

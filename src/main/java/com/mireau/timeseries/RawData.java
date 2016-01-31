@@ -6,8 +6,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -23,9 +25,9 @@ import java.util.logging.Logger;
  *     valeur (signed)      : float(4 bytes)
  *     pas de caractère de séparation
  */
-public class RawTimeSerie {
+public class RawData {
 	
-	static Logger logger = Logger.getLogger(RawTimeSerie.class.getName());
+	static Logger logger = Logger.getLogger(RawData.class.getName());
 	static int DATA_LEN = 8;
 	static SimpleDateFormat sdf = new SimpleDateFormat("YYYY/MM/dd HH:mm:ss");
 	
@@ -35,7 +37,7 @@ public class RawTimeSerie {
 	/** dernier enregistrement */
 	protected Entry last;
 	
-	protected RawTimeSerie(File dir, String id){
+	protected RawData(File dir, String id){
 		this.directory = dir;
 		this.id = id;
 	}
@@ -142,6 +144,35 @@ public class RawTimeSerie {
 		
 	}
 	
+	public List<Entry> getLastPoints(int nb) throws IOException{
+		File file = getFile();
+		RandomAccessFile raf = null;
+		List<Entry> result = null;
+		
+		try{
+			raf = new RandomAccessFile(file, "r");
+			long pos = raf.length() - ( nb * DATA_LEN );
+			if(pos<0){
+				nb = nb+(int)(pos/DATA_LEN);
+				pos = 0;
+			}
+			raf.seek(pos);
+			
+			result = new ArrayList<Entry>(nb);
+			Entry next = null;
+			for(int i=0;i<nb;i++){
+				next = new Entry();
+				next.timestamp = (long)raf.readInt();
+				next.value = raf.readFloat();
+				result.add(next);
+			}
+		}
+		finally{
+			if(raf!=null) raf.close();
+		}
+		return result;
+	}
+	
 	/**
 	 * Parcours la liste des enregistrement sur une période
 	 * 
@@ -161,7 +192,7 @@ public class RawTimeSerie {
 		long timestamp;
 		float value;
 		public String toString(){
-			return RawTimeSerie.sdf.format(new Date(timestamp*1000))+":"+value;
+			return RawData.sdf.format(new Date(timestamp*1000))+":"+value;
 		}
 		public long getTimestamp() {
 			return timestamp;
@@ -238,6 +269,7 @@ public class RawTimeSerie {
 		public boolean hasNext() {
 			if(raf==null || !raf.getChannel().isOpen()) return false;
 			
+			if(flagNext == true) return true;	//Déjà lue
 			
 			flagNext = true;
 			try {

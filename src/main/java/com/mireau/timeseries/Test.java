@@ -20,8 +20,8 @@ import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
-import com.mireau.timeseries.ArchiveTimeSerie.Type;
-import com.mireau.timeseries.RawTimeSerie.Entry;
+import com.mireau.timeseries.Archive.Type;
+import com.mireau.timeseries.RawData.Entry;
 
 
 public class Test {
@@ -105,7 +105,7 @@ public class Test {
 					printStatus(ts);
 				}
 				else if ("build".equalsIgnoreCase(verb)) {
-					ArchiveTimeSerie archive = ts.getArchive(15*60, Type.AVERAGE);
+					Archive archive = ts.getArchive(15*60, Type.AVERAGE);
 					ts.buildArchive(archive);
 				}
 				else if ("put".equalsIgnoreCase(verb)) {
@@ -212,7 +212,7 @@ public class Test {
 		System.out.println("   ");
 	}
 	
-	public static void printStatus(TimeSerie ts) throws IOException{
+	public static void printStatus(TimeSerie ts) throws IOException, InterruptedException{
 		SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/Y-HH:mm");
 		if(ts == null){
 			System.out.println("no opened time serie");
@@ -225,11 +225,11 @@ public class Test {
 		}	
 		else{
 			System.out.println("archives :");
-			for (ArchiveTimeSerie archive : ts.archives) {
+			for (Archive archive : ts.archives) {
 				if(archive == null) continue;
 				System.out.println("   "+archive.archiveFile+" type:"+archive.getType()+" step:"+archive.step/60+"min debut:"+sdf.format(new Date(archive.t0*1000))+" len="+archive.archiveFile.length()+" last="+archive.lastTimestamp);
-				if(archive instanceof AverageArchiveDataSerie){
-					AverageArchiveDataSerie a = (AverageArchiveDataSerie)archive;
+				if(archive instanceof AverageArchive){
+					AverageArchive a = (AverageArchive)archive;
 					System.out.println("      stepTimestamp:"+a.stepTimestamp+" stepNb:"+a.stepNb+" stepLast:"+a.stepLast+" stepMin:"+a.stepMin+" stepMax:"+a.stepMax+" stepSum:"+a.stepSum);
 				}
 				List<ArchivePoint> l = archive.getLastPoints(3);
