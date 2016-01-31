@@ -96,7 +96,7 @@ public abstract class Archive {
 	enum WriteStrategy {
 		ALL_POINTS, CHANGE_STEP
 	}
-
+	
 	String id;
 	WriteStrategy writeStartegy = WriteStrategy.ALL_POINTS;
 
@@ -401,6 +401,13 @@ public abstract class Archive {
 		}
 	}
 
+	public static Type decodeType(String type) {
+		if("AVERAGE".equalsIgnoreCase(type)) return Type.AVERAGE;
+		if("ABS_COUNTER".equalsIgnoreCase(type)) return Type.ABS_COUNTER;
+		if("REL_COUNTER".equalsIgnoreCase(type)) return Type.REL_COUNTER;
+		return null;
+	}
+	
 	public Type getType() {
 		if (this instanceof AverageArchive)
 			return Type.AVERAGE;

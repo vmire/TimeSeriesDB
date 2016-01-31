@@ -27,6 +27,14 @@ public class TimeSerie {
 	/** nom (identifiant) de la série */
 	private String id;
 	
+	
+	/** Meta données */
+	Meta meta;
+	
+	public Meta getMeta() {
+		return meta;
+	}
+
 	/** RawDataSerie */
 	RawData rawDS;
 	
@@ -47,10 +55,21 @@ public class TimeSerie {
 		this.directory = dir;
 		
 		/*
+		 * Méta-données
+		 */
+		File metadataFile = new File(dir,"ts_"+id+".mts");
+		meta = new Meta(metadataFile);
+		meta.readMetadata();
+		
+		/*
 		 * Raw
 		 */
-		rawDS = new RawData(directory,id);
+		File rawFile = new File(dir,"ts_"+id+".rts");
+		rawDS = new RawData(rawFile);
 		
+		/*
+		 * Archives
+		 */
 		archives = new ArrayList<Archive>();
 		
 		//On parcours le répertoire
@@ -70,6 +89,7 @@ public class TimeSerie {
 			}
 		}
 	}
+	
 	
 	
 	public void close() throws IOException, ArchiveInitException{
@@ -240,4 +260,6 @@ public class TimeSerie {
 	public RawData getRawDS() {
 		return rawDS;
 	}
+	
+	
 }

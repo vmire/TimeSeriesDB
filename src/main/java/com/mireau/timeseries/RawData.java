@@ -32,21 +32,18 @@ public class RawData {
 	static SimpleDateFormat sdf = new SimpleDateFormat("YYYY/MM/dd HH:mm:ss");
 	
 	String id;
-	File directory;
+	File rawFile;
 	
 	/** dernier enregistrement */
 	protected Entry last;
 	
-	protected RawData(File dir, String id){
-		this.directory = dir;
-		this.id = id;
+	protected RawData(File f){
+		this.rawFile = f;
 	}
 	
 	public File getFile() throws IOException{
-		String filename = "/ts_"+this.id+".rts";
-		File f = new File(this.directory,filename);
-		f.createNewFile();		//Vérifie si le fichier n'existe pas deja
-		return f;
+		rawFile.createNewFile();		//Vérifie si le fichier n'existe pas deja
+		return rawFile;
 	}
 	
 	protected void close(){
