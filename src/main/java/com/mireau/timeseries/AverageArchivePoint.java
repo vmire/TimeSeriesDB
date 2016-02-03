@@ -20,10 +20,10 @@ public class AverageArchivePoint extends ArchivePoint {
 	@Override
 	public String json(DateFormat dateFormat, NumberFormat numberFormater){
 		return  "{"
-				+"t:'"+dateFormat.format(getDate())+"'"
-				+", v:"+(this.value==null ? "" : numberFormater.format(this.value))
-				+", min:"+(this.min==null ? "" : numberFormater.format(this.min))
-				+", max:"+(this.max==null ? "" : numberFormater.format(this.max))
+				+"\"t\":\""+dateFormat.format(getDate())+"\""
+				+", \"v\":"+(this.value==null ? null : "\""+numberFormater.format(this.value)+"\"")
+				+", \"min\":"+(this.min==null ? null : "\""+numberFormater.format(this.min)+"\"")
+				+", \"max\":"+(this.max==null ? null : "\""+numberFormater.format(this.max)+"\"")
 				+"}";
 	}
 	

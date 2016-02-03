@@ -86,6 +86,7 @@ public class DataSerieTest {
 	public void setUp() throws Exception {
 		//Création de la TimeSerieDB
 		ts = new TimeSerie(TEST_SERIE_NAME,DIR);
+		ts.getMeta().setType(Type.AVERAGE);
 		
 		rawFile = new File(DIR+"/ts_"+TEST_SERIE_NAME+".rts");
 	}
@@ -110,7 +111,7 @@ public class DataSerieTest {
 		/* 
 		 * Archive sur 5 minutes / tests de création et à vide
 		 */
-		Archive archive5 = ts.createArchive(5*60, Type.AVERAGE);
+		Archive archive5 = ts.createArchive(5*60);
 		archive5.setWriteStartegy(Archive.WriteStrategy.CHANGE_STEP);
 		Assert.assertEquals(1,ts.archives.size());
 		
@@ -187,7 +188,7 @@ public class DataSerieTest {
 		/*
 		 * construction d'une archive 15 mn. Elle doit récupérer les valeurs brutes déjà enregistrées
 		 */
-		Archive archive15 = ts.createArchive(15*60, Type.AVERAGE);
+		Archive archive15 = ts.createArchive(15*60);
 		File archive15File = new File(DIR+"/ts_"+TEST_SERIE_NAME+"_"+(15*60)+".ats");
 		Assert.assertTrue(archive15File.exists());
 		
@@ -198,6 +199,7 @@ public class DataSerieTest {
 		RandomAccessFile raf = new RandomAccessFile(archive15File, "r");
 		raf.seek(8);
 		long startTimestamp = raf.readLong();
+		raf.close();
 		Calendar startCal = GregorianCalendar.getInstance();
 		startCal.set(2015, 11, 07, 00, 00, 00);	// datetime théorique de début	
 		Assert.assertEquals(startCal.getTimeInMillis()/1000,startTimestamp);

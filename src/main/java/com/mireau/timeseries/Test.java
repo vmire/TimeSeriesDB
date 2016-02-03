@@ -20,7 +20,6 @@ import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
-import com.mireau.timeseries.Archive.Type;
 import com.mireau.timeseries.RawData.Entry;
 
 
@@ -105,7 +104,7 @@ public class Test {
 					printStatus(ts);
 				}
 				else if ("build".equalsIgnoreCase(verb)) {
-					Archive archive = ts.getArchive(15*60, Type.AVERAGE);
+					Archive archive = ts.getArchive(15*60);
 					ts.buildArchive(archive);
 				}
 				else if ("put".equalsIgnoreCase(verb)) {
@@ -141,11 +140,8 @@ public class Test {
 						int step = Integer.parseInt(terms[1]);
 						String periodStr = terms[2];
 						Long start = (terms.length>3 ? Long.parseLong(terms[3]) : null);
-						Type type = Type.AVERAGE;
 						
-						
-						
-						List<ArchivePoint> points = ts.select(step,type,start,periodStr);
+						List<ArchivePoint> points = ts.select(step,start,periodStr);
 						
 						NumberFormat numberFormater = NumberFormat.getInstance();
 						numberFormater.setGroupingUsed(false);

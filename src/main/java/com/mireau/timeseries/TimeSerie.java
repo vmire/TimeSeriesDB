@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
-import com.mireau.timeseries.Archive.Type;
 import com.mireau.timeseries.RawData.Entry;
 
 /**
@@ -103,9 +102,9 @@ public class TimeSerie {
 		return rawDS==null;
 	}
 	
-	public Archive getArchive(int step, Type type){
+	public Archive getArchive(int step){
 		for(Archive a : archives) {
-			if(a.step==step && a.getType()==type) return a;
+			if(a.step==step) return a;
 		}
 		return null;
 	}
@@ -113,21 +112,21 @@ public class TimeSerie {
 	/**
 	 * Crée une archive (le fichier n'existe pas déjà)
 	 * @param step
-	 * @param type
 	 * @return
 	 * @throws IOException
 	 * @throws ArchiveInitException
 	 */
-	public Archive createArchive(int step, Type type) throws IOException, ArchiveInitException{
-		Archive archive = getArchive(step,type);
+	public Archive createArchive(int step) throws IOException, ArchiveInitException{
+		Archive archive = getArchive(step);
 		if(archive!=null) throw new ArchiveInitException("l'archive existe deja");
 		
 		String filename = "ts_"+id+"_"+step+".ats";
 		File file = new File(directory,filename);
 		if(file.exists()) throw new ArchiveInitException("le fichier "+file.getAbsolutePath()+" existe deja");
+		if(this.getMeta().getType()==null)  throw new ArchiveInitException("type is not initialized");
 		
-		Archive.newArchiveFile(step, type, file);;
-		archive = Archive.getArchive(file, this.id, step, type);
+		Archive.newArchiveFile(step, this.getMeta().getType(), file);
+		archive = Archive.getArchive(file, this.id);
 		buildArchive(archive);
 		
 		archives.add(archive);
@@ -196,7 +195,7 @@ public class TimeSerie {
 		return rawDS.getLast();
 	}
 	
-	public List<ArchivePoint> select(int step, Type type, Long start, int period) throws ArchiveInitException, IOException, InterruptedException{
+	public List<ArchivePoint> select(int step, Long start, int period) throws ArchiveInitException, IOException, InterruptedException{
 		Long end = null;
 		if(start==null){
 			end = new Date().getTime()/1000;
@@ -205,15 +204,15 @@ public class TimeSerie {
 		else{
 			end = start+period;
 		}
-		Archive archive = this.getArchive(step, type);
+		Archive archive = this.getArchive(step);
 		if(archive==null)
-			throw new ArchiveInitException("Erreur : aucune archive avec step="+step+" type="+type);
+			throw new ArchiveInitException("Erreur : aucune archive avec step="+step);
 		
 		List<ArchivePoint> list = archive.getPoints(start,end);
 		return list;
 	}
 	
-	public List<ArchivePoint> select(int step, Type type, Long start, String periodStr) throws ArchiveInitException, IOException, InterruptedException{
+	public List<ArchivePoint> select(int step, Long start, String periodStr) throws ArchiveInitException, IOException, InterruptedException{
 		char unit = periodStr.charAt(periodStr.length()-1);
 		int multipl = 1;
 		if(unit=='h' || unit=='d' || unit=='w' || unit=='m' || unit=='y'){
@@ -228,7 +227,7 @@ public class TimeSerie {
 		}
 		int period = Integer.parseInt(periodStr) * multipl;
 		
-		return select(step,type,start,period);
+		return select(step,start,period);
 	}
 	
 	

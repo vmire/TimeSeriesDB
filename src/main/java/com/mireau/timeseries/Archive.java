@@ -210,20 +210,6 @@ public abstract class Archive {
 	}
 
 	/**
-	 * Obtient l'instance de l'archive (existante ou non)
-	 * 
-	 * @throws ArchiveInitException
-	 * @throws IOException
-	 */
-	public static Archive getArchive(File file, String id, Integer step, Type type)
-			throws IOException, ArchiveInitException {
-		Archive archive = null;
-		if (type == Type.AVERAGE)
-			archive = new AverageArchive(file, id, step);
-		return archive;
-	}
-
-	/**
 	 * Initialise l'objet archive avec le contenu du fichier correspondant
 	 * 
 	 * @throws IOException
