@@ -9,23 +9,24 @@ public class AverageArchive extends Archive {
 
 	static int ENREG_LEN = 13;
 	static int CURRENT_STEP_DATA_LENGTH = 28;
-	
-	
-	/** somme des valeurs pour le step en cours (pour le type AVERAGE uniquement)*/
+
+	/**
+	 * somme des valeurs pour le step en cours (pour le type AVERAGE uniquement)
+	 */
 	double stepSum;
-	/** nombre de valeurs pour le step en cours (pour le type AVERAGE uniquement)*/
+	/**
+	 * nombre de valeurs pour le step en cours (pour le type AVERAGE uniquement)
+	 */
 	int stepNb;
-	/** dernière valeur sur le step en cours*/
+	/** dernière valeur sur le step en cours */
 	Float stepLast;
-	/** valeur mini sur le step en cours*/
+	/** valeur mini sur le step en cours */
 	Float stepMin;
-	/** valeur maxi sur le step en cours*/
+	/** valeur maxi sur le step en cours */
 	Float stepMax;
 	/** timestamp du debut de step en cours */
 	Long stepTimestamp;
-	
-	
-	
+
 	public AverageArchive(File file, String id, Integer step) throws IOException, ArchiveInitException {
 		super(file, id, step);
 	}
@@ -33,14 +34,15 @@ public class AverageArchive extends Archive {
 	/**
 	 * Retourne la taille d'un enregistrement dans le fichier
 	 */
-	protected  int getRecordLen(){
+	protected int getRecordLen() {
 		return ENREG_LEN;
 	}
-	
+
 	/**
 	 * Enregistrement des données sur le step en cours
-	 * @throws IOException 
-	 * @throws ArchiveInitException 
+	 * 
+	 * @throws IOException
+	 * @throws ArchiveInitException
 	 */
 	protected void writeCurrentStepData(RandomAccessFile raf) throws IOException, ArchiveInitException{
 		if(stepTimestamp==null) throw new ArchiveInitException("stepTimestamp non initialisé");
@@ -58,78 +60,94 @@ public class AverageArchive extends Archive {
 			lock.writeLock().unlock();
 		}
 	}
-	
+
 	/**
 	 * reinitialisation des variables sur le step en cours
 	 */
-	protected void resetCurrentStepData(){
-		stepTimestamp = null; 
+	@Override
+	protected void resetCurrentStepData() {
+		stepTimestamp = null;
 		stepSum = 0;
 		stepNb = 0;
 		stepMin = null;
 		stepMax = null;
 	}
-	
+
 	/**
 	 * Lecture des données sur le step en cours
 	 */
 	@Override
 	protected void readCurrentStepData(RandomAccessFile adf) throws IOException{
 		adf.seek(CUR_STEP_RECORD_POS);
-		
+
 		stepTimestamp = adf.readLong();
 		stepSum = adf.readDouble();
 		stepNb = adf.readInt();
 		stepMin = adf.readFloat();
 		stepMax = adf.readFloat();
-		
-		if(stepNb==0){
+
+		if (stepNb == 0) {
 			stepMin = null;
 			stepMax = null;
 		}
-		logger.fine("step en cours: sum="+stepSum+" nb="+stepNb+" min="+stepMin+" max="+stepMax+" timestamp="+stepTimestamp);
+		logger.fine("step en cours: sum=" + stepSum + " nb=" + stepNb + " min=" + stepMin + " max=" + stepMax
+				+ " timestamp=" + stepTimestamp);
 	}
-	
+
 	/**
 	 * Longueur des données du step en cours écrites dans le fichier archive
 	 */
-	protected int currentStepDataLength(){
+	protected int currentStepDataLength() {
 		return CURRENT_STEP_DATA_LENGTH;
 	}
-	
+
 	/**
-	 * Construit l'objet ArchivePoint correspondant aux valeurs enregistrées sur le step en cours
+	 * Longueur d'un enregistrement de l'archive
+	 * 
+	 * @return
 	 */
-	protected ArchivePoint currentStepPoint(){
-		if(this.stepNb==0) return null;
+	@Override
+	protected int enregLen() {
+		return ENREG_LEN;
+	}
+
+	/**
+	 * Construit l'objet ArchivePoint correspondant aux valeurs enregistrées sur
+	 * le step en cours
+	 */
+	protected ArchivePoint currentStepPoint() {
+		if (this.stepNb == 0)
+			return null;
 		AverageArchivePoint point = new AverageArchivePoint();
-		point.value = (float)(this.stepSum / this.stepNb);
+		point.value = (float) (this.stepSum / this.stepNb);
 		point.min = this.stepMin;
 		point.max = this.stepMax;
 		point.timestamp = this.stepTimestamp;
 		return point;
 	}
-	
+
 	/**
 	 * Enregistrement d'un point
+	 * 
 	 * @param timestamp
 	 * @param value
 	 * @throws IOException
-	 * @throws ArchiveInitException 
+	 * @throws ArchiveInitException
 	 */
 	@Override
-	public void post(long timestamp, float value) throws IOException, ArchiveInitException{
-		post(timestamp,value,null);
+	public void post(long timestamp, float value) throws IOException, ArchiveInitException {
+		post(timestamp, value, null);
 	}
-	
+
 	/**
-	 * Enregistrement d'un point
-	 * Le curseur doit être positionné en fin de fichier
+	 * Enregistrement d'un point Le curseur doit être positionné en fin de
+	 * fichier
+	 * 
 	 * @param timestamp
 	 * @param value
-	 * @param ramdomAccessFile 
+	 * @param ramdomAccessFile
 	 * @throws IOException
-	 * @throws ArchiveInitException 
+	 * @throws ArchiveInitException
 	 */
 	@Override
 	protected void post(long timestamp, float value, RandomAccessFile adf) throws IOException, ArchiveInitException{
@@ -191,85 +209,86 @@ public class AverageArchive extends Archive {
 			lock.writeLock().unlock();
 		}
 	}
-	
-	
+
 	/**
 	 * Enregistre les valeurs du step en cours dans le fichier
-	 * @throws IOException 
+	 * 
+	 * @throws IOException
 	 */
-	private void writePoint(RandomAccessFile adf) throws IOException{
-		if(stepNb == 0) return;
-		
-		AverageArchivePoint point = (AverageArchivePoint)currentStepPoint();
-		
+	private void writePoint(RandomAccessFile adf) throws IOException {
+		if (stepNb == 0)
+			return;
+
+		AverageArchivePoint point = (AverageArchivePoint) currentStepPoint();
+
 		long len = adf.length();
-		
-		
-		if(len<HEADER1_LEN + AverageArchive.CURRENT_STEP_DATA_LENGTH){
+
+		if (len < HEADER1_LEN + AverageArchive.CURRENT_STEP_DATA_LENGTH) {
 			/*
 			 * Premier enregistrement de l'archive
 			 */
-			adf.seek(8);	//TODO ne pas coder en dur si possible: correspond à l'enregistrement de step+type
-			//Timestamp de début de l'archive
+			adf.seek(8); // TODO ne pas coder en dur si possible: correspond à
+							// l'enregistrement de step+type
+			// Timestamp de début de l'archive
 			adf.writeLong(stepTimestamp);
-			for(int i=0;i<currentStepDataLength();i++) adf.write((byte)0);
+			for (int i = 0; i < currentStepDataLength(); i++)
+				adf.write((byte) 0);
 			len = adf.length();
-		}
-		else{
+		} else {
 			/*
 			 * Enregistrement placé à la fin
 			 */
 			adf.seek(len);
 		}
-		
-		if(lastTimestamp!=null && stepTimestamp == lastTimestamp){
+
+		if (lastTimestamp != null && stepTimestamp == lastTimestamp) {
 			/*
-			 * On écrase la dernière valeur qui correspond au meme step. (C'est autorise)
+			 * On écrase la dernière valeur qui correspond au meme step. (C'est
+			 * autorise)
 			 */
 			logger.fine("override last value");
 			adf.seek(adf.getFilePointer() - ENREG_LEN);
-		}
-		else if(lastTimestamp!=null && stepTimestamp > lastTimestamp+step){
-			//On remplit eventuellement les steps sans valeur
-			int stepsToSkip = (int)(stepTimestamp - lastTimestamp - step)/step;
-			logger.fine("skip "+stepsToSkip+" steps");
-			//Il y a des steps vides
-			for(int i=0;i<stepsToSkip;i++){
+		} else if (lastTimestamp != null && stepTimestamp > lastTimestamp + step) {
+			// On remplit eventuellement les steps sans valeur
+			int stepsToSkip = (int) (stepTimestamp - lastTimestamp - step) / step;
+			logger.fine("skip " + stepsToSkip + " steps");
+			// Il y a des steps vides
+			for (int i = 0; i < stepsToSkip; i++) {
 				adf.writeBoolean(false);
-				for(int j=0;j<ENREG_LEN-1;j++){
+				for (int j = 0; j < ENREG_LEN - 1; j++) {
 					adf.writeByte(0);
 				}
 			}
 		}
-		
-		//On ecrit la nouvelle valeur
-		logger.fine("flush step "+sdf.format(new Date(point.timestamp*1000))+": value="+point.value);
+
+		// On ecrit la nouvelle valeur
+		logger.fine("flush step " + sdf.format(new Date(point.timestamp * 1000)) + ": value=" + point.value);
 		adf.writeBoolean(true);
 		adf.writeFloat(point.value);
 		adf.writeFloat(point.min);
 		adf.writeFloat(point.max);
-		
-		//Mise a jour du timestamp de dernier enregistrement
+
+		// Mise a jour du timestamp de dernier enregistrement
 		this.lastTimestamp = stepTimestamp;
 	}
-	
+
 	/**
 	 * Lit le point dans le fichier, a la position du curseur
-	 * @throws IOException 
+	 * 
+	 * @throws IOException
 	 */
-	@Override
-	protected ArchivePoint readPoint(RandomAccessFile raf) throws IOException{
+	protected ArchivePoint readPoint(RandomAccessFile raf) throws IOException {
 		AverageArchivePoint p = new AverageArchivePoint();
-		if(raf.readBoolean()){
+		if (raf.readBoolean()) {
 			p.value = raf.readFloat();
 			p.min = raf.readFloat();
 			p.max = raf.readFloat();
 		}
 		return p;
 	}
-	
+
 	@Override
-	protected ArchivePoint newEmptyPoint(Long timestamp){
+	protected ArchivePoint newEmptyPoint(Long timestamp) {
 		AverageArchivePoint p = new AverageArchivePoint();
 		p.timestamp = timestamp;
 		return p;

@@ -2,6 +2,7 @@ package com.mireau.timeseries;
 
 import java.text.DateFormat;
 import java.text.NumberFormat;
+import java.util.Date;
 
 public class AverageArchivePoint extends ArchivePoint {
 
@@ -20,7 +21,7 @@ public class AverageArchivePoint extends ArchivePoint {
 	@Override
 	public String json(DateFormat dateFormat, NumberFormat numberFormater){
 		return  "{"
-				+"\"t\":\""+dateFormat.format(getDate())+"\""
+				+"\"t\":\""+dateFormat.format(new Date(this.timestamp*1000))+"\""
 				+", \"v\":"+(this.value==null ? null : "\""+numberFormater.format(this.value)+"\"")
 				+", \"min\":"+(this.min==null ? null : "\""+numberFormater.format(this.min)+"\"")
 				+", \"max\":"+(this.max==null ? null : "\""+numberFormater.format(this.max)+"\"")
@@ -29,7 +30,7 @@ public class AverageArchivePoint extends ArchivePoint {
 	
 	@Override
 	public String csv(DateFormat dateFormat, NumberFormat numberFormater){
-		return  dateFormat.format(getDate())
+		return  dateFormat.format(new Date(this.timestamp*1000))
 				+";"+(this.value==null ? "" : numberFormater.format(this.value))
 				+";"+(this.min==null ? "" : numberFormater.format(this.min))
 				+";"+(this.max==null ? "" : numberFormater.format(this.max));

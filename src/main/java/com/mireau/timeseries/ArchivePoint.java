@@ -19,7 +19,7 @@ public class ArchivePoint{
 	
 	
 	public String json(DateFormat dateFormat, NumberFormat numberFormater){
-		return  "{t='"+dateFormat.format(getDate())+"' v="+numberFormater.format(this.value)+"}";
+		return  "{\"t\"=\""+dateFormat.format(getDate())+"\" \"v\"=\""+numberFormater.format(this.value)+"\"}";
 	}
 	
 	public String csv(DateFormat dateFormat, NumberFormat numberFormater){
