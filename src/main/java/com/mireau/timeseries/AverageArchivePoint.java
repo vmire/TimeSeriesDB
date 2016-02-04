@@ -22,9 +22,9 @@ public class AverageArchivePoint extends ArchivePoint {
 	public String json(DateFormat dateFormat, NumberFormat numberFormater){
 		return  "{"
 				+"\"t\":\""+dateFormat.format(new Date(this.timestamp*1000))+"\""
-				+", \"v\":"+(this.value==null ? null : "\""+numberFormater.format(this.value)+"\"")
-				+", \"min\":"+(this.min==null ? null : "\""+numberFormater.format(this.min)+"\"")
-				+", \"max\":"+(this.max==null ? null : "\""+numberFormater.format(this.max)+"\"")
+				+", \"v\":"+(this.value==null ? null : numberFormater.format(this.value))
+				+", \"min\":"+(this.min==null ? null : numberFormater.format(this.min))
+				+", \"max\":"+(this.max==null ? null : numberFormater.format(this.max))
 				+"}";
 	}
 	

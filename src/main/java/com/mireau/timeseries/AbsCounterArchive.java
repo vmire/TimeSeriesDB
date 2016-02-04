@@ -90,6 +90,7 @@ public class AbsCounterArchive extends Archive {
 		long pos = adf.length() - this.enregLen();
 		adf.seek(pos);
 		this.previousPoint = (AbsCounterArchivePoint)this.readPoint(adf);
+		if(previousPoint!=null && previousPoint.value==null) previousPoint = null;
 		
 		logger.fine("step en cours: nb="+stepNb+" max="+stepMax+" timestamp="+stepTimestamp);
 	}
@@ -120,14 +121,16 @@ public class AbsCounterArchive extends Archive {
 		point.overflow = false;
 		point.timestamp = this.stepTimestamp;
 		
-		if(this.previousPoint==null){
-			//Pas de point pr�c�dent : c'est le premier point de l'archive
+		if(point.value==null) return null;
+		
+		if(this.previousPoint==null || previousPoint.value==null){
+			//Pas de point précédent : c'est le premier point de l'archive
 			logger.warning("unknown previous point");
 			point.diff = (float) 0;
 			point.overflow = true;
 		}
 		else{
-			if(stepMax>previousPoint.value){
+			if(stepMax>=previousPoint.value){
 				point.diff = stepMax - previousPoint.value;
 				if(stepMax>stepCounter){
 					//Il y a eu un overflow du compteur
@@ -136,10 +139,14 @@ public class AbsCounterArchive extends Archive {
 				}
 			}
 			else{
-				//�trange : il peut �ventuellement y avoir eu overflow avant la premi�re valeur brute du step
+				//étrange : il peut éventuellement y avoir eu overflow avant la première valeur brute du step
+				logger.warning("stepMax("+stepMax+") < previousPoint("+previousPoint.value+")");
 				point.overflow = true;
 				point.diff = stepCounter;
 			}
+		}
+		if(point.value==null){
+			logger.warning("null point.value");
 		}
 		return point;
 	}
@@ -168,6 +175,7 @@ public class AbsCounterArchive extends Archive {
 			if(stepTimestamp==null || stepTimestamp==0){
 				//Calcul du timestamp d'origine de l'archive : arrondi au step immédiatement inférieur
 				stepTimestamp = getTimestampOrigine(timestamp);
+				this.t0 = stepTimestamp;
 				logger.fine("write start timestamp");
 				//ecriture du timestamp dans l'en-tête
 				if(adf==null) adf = openFileForWriting(true);
@@ -219,6 +227,9 @@ public class AbsCounterArchive extends Archive {
 		if(stepNb == 0) return;
 		
 		AbsCounterArchivePoint point = (AbsCounterArchivePoint)currentStepPoint();
+		if(point==null){
+			return;
+		}
 		
 		long len = adf.length();
 		
@@ -266,6 +277,9 @@ public class AbsCounterArchive extends Archive {
 		int flags = 0x01;		//set first flag bit
 		if(point.overflow) flags = flags & 0x02;	//set second flag bit
 		adf.writeByte(flags);
+		if(point.value==null){
+			logger.fine("null");
+		}
 		adf.writeFloat(point.value);
 		adf.writeFloat(point.diff);
 		

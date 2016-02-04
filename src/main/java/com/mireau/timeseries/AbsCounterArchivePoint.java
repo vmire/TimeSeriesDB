@@ -21,10 +21,10 @@ public class AbsCounterArchivePoint extends ArchivePoint {
 	@Override
 	public String json(DateFormat dateFormat, NumberFormat numberFormater){
 		return  "{"
-				+"t:'"+dateFormat.format(new Date(this.timestamp*1000))+"'"
-				+", v:"+(this.value==null ? "" : numberFormater.format(this.value))
-				+", diff:"+(this.diff==null ? "" : numberFormater.format(this.diff))
-				+", ovf:"+(this.overflow ? "1":"0")
+				+"\"t\":\""+dateFormat.format(new Date(this.timestamp*1000))+"\""
+				+",\"v\":"+(this.value==null ? null : numberFormater.format(this.value))
+				+",\"diff\":"+(this.diff==null ? null : numberFormater.format(this.diff))
+				+(this.overflow ? ",\"ovf\":true" : "")
 				+"}";
 	}
 	
