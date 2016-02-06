@@ -38,6 +38,7 @@ public class AbsCounterArchive extends Archive {
 	
 	/** Dernier point connu de l'archive (pour calcul du diff) */
 	AbsCounterArchivePoint previousPoint;
+	AbsCounterArchivePoint previousNonNullPoint;
 	
 	
 	public AbsCounterArchive(File file, String id, Integer step) throws IOException, ArchiveInitException {
@@ -89,10 +90,26 @@ public class AbsCounterArchive extends Archive {
 		//Lecture du dernier point
 		long pos = adf.length() - this.enregLen();
 		adf.seek(pos);
-		this.previousPoint = (AbsCounterArchivePoint)this.readPoint(adf);
+		
+		AbsCounterArchivePoint point = (AbsCounterArchivePoint)this.readPoint(adf);
+		long timestamp = t0 + (pos - HEADER1_LEN - currentStepDataLength())*step/enregLen();
+		point.timestamp = timestamp;
+		this.previousPoint = point;
+		this.previousNonNullPoint = null;
+		while(point == null || point.value==null){
+			//On continue de lire les point vers l'arrière
+			pos -= this.enregLen();
+			timestamp -= step;
+			if(pos<HEADER1_LEN + this.currentStepDataLength()) break;
+			adf.seek(pos);
+			point = (AbsCounterArchivePoint)this.readPoint(adf);
+			point.timestamp = timestamp;
+		}
+		if(point!=null && point.value!=null) previousNonNullPoint = point;
 		if(previousPoint!=null && previousPoint.value==null) previousPoint = null;
 		
-		logger.fine("step en cours: nb="+stepNb+" max="+stepMax+" timestamp="+stepTimestamp);
+		
+		logger.fine("step en cours: nb="+stepNb+" previous="+previousPoint+"/"+previousNonNullPoint+" timestamp="+stepTimestamp);
 	}
 	
 	/**
@@ -123,15 +140,15 @@ public class AbsCounterArchive extends Archive {
 		
 		if(point.value==null) return null;
 		
-		if(this.previousPoint==null || previousPoint.value==null){
-			//Pas de point précédent : c'est le premier point de l'archive
-			logger.warning("unknown previous point");
+		if(this.previousNonNullPoint==null || previousNonNullPoint.value==null){
+			//Aucun point précédent : c'est le premier point de l'archive
+			logger.warning("no previous point");
 			point.diff = (float) 0;
 			point.overflow = true;
 		}
 		else{
-			if(stepMax>=previousPoint.value){
-				point.diff = stepMax - previousPoint.value;
+			if(stepMax>=previousNonNullPoint.value){
+				point.diff = stepMax - previousNonNullPoint.value;
 				if(stepMax>stepCounter){
 					//Il y a eu un overflow du compteur
 					point.diff += stepCounter;
@@ -140,7 +157,7 @@ public class AbsCounterArchive extends Archive {
 			}
 			else{
 				//étrange : il peut éventuellement y avoir eu overflow avant la première valeur brute du step
-				logger.warning("stepMax("+stepMax+") < previousPoint("+previousPoint.value+")");
+				logger.warning("stepMax("+stepMax+") < previousPoint("+previousNonNullPoint.value+")");
 				point.overflow = true;
 				point.diff = stepCounter;
 			}
@@ -224,7 +241,8 @@ public class AbsCounterArchive extends Archive {
 	 * @throws IOException 
 	 */
 	private void writePoint(RandomAccessFile adf) throws IOException{
-		if(stepNb == 0) return;
+		if(stepNb == 0) 
+			return;
 		
 		AbsCounterArchivePoint point = (AbsCounterArchivePoint)currentStepPoint();
 		if(point==null){
@@ -275,7 +293,9 @@ public class AbsCounterArchive extends Archive {
 		//On ecrit la nouvelle valeur
 		logger.fine("flush step "+sdf.format(new Date(point.timestamp*1000))+": value="+point.value);
 		int flags = 0x01;		//set first flag bit
-		if(point.overflow) flags = flags & 0x02;	//set second flag bit
+		if(point.overflow){
+			flags = flags | 0x02;	//set second flag bit
+		}
 		adf.writeByte(flags);
 		if(point.value==null){
 			logger.fine("null");
@@ -288,6 +308,7 @@ public class AbsCounterArchive extends Archive {
 		
 		//Conservation du dernier point
 		this.previousPoint = point;
+		if(point!=null && point.value!= null) this.previousNonNullPoint = point;
 	}
 	
 	/**

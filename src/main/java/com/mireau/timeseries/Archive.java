@@ -597,6 +597,7 @@ public abstract class Archive {
 			startTimestamp = (long) 0;
 		List<ArchivePoint> result = new ArrayList<ArchivePoint>();
 
+		logger.fine("getPoints("+new Date(startTimestamp*1000)+","+new Date(endTimestamp*1000)+")");
 		if (startTimestamp != null && endTimestamp != null && startTimestamp >= endTimestamp)
 			return result;
 
@@ -630,7 +631,10 @@ public abstract class Archive {
 				if (cursorIdx > len - getRecordLen()) {
 					// le curseur n'est pas dans le fichier. Cause possible :
 					// absence de valeurs enregistrée à la fin
-					if (cursorTimestamp == curStepPoint.timestamp)
+					if(curStepPoint==null){
+						break;
+					}
+					else if (cursorTimestamp == curStepPoint.timestamp)
 						point = curStepPoint;
 					else if (cursorTimestamp > curStepPoint.timestamp) {
 						// On est au dela de curStep : on arrête sans mettre de
