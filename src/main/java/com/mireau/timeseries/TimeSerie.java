@@ -195,14 +195,14 @@ public class TimeSerie {
 		return rawDS.getLast();
 	}
 	
-	public List<ArchivePoint> select(int step, Long start, int period) throws ArchiveInitException, IOException, InterruptedException{
+	public List<ArchivePoint> select(int step, Long start, int duration) throws ArchiveInitException, IOException, InterruptedException{
 		Long end = null;
 		if(start==null){
 			end = new Date().getTime()/1000;
-			start = end-period;
+			start = end-duration;
 		}
 		else{
-			end = start+period;
+			end = start+duration;
 		}
 		Archive archive = this.getArchive(step);
 		if(archive==null)
@@ -212,11 +212,21 @@ public class TimeSerie {
 		return list;
 	}
 	
-	public List<ArchivePoint> select(int step, Long start, String periodStr) throws ArchiveInitException, IOException, InterruptedException{
-		char unit = periodStr.charAt(periodStr.length()-1);
+	public List<ArchivePoint> select(int step, Long start, String durationStr) throws ArchiveInitException, IOException, InterruptedException{
+		Integer duration = getDurationSec(durationStr);
+		return select(step,start,duration);
+	}
+	
+	/**
+	 * Obtient une durée en seconde traduite d'une chaine qui inclue un nombre avec l'unité
+	 * @param durationStr
+	 * @return
+	 */
+	public static Integer getDurationSec(String durationStr){
+		char unit = durationStr.charAt(durationStr.length()-1);
 		int multipl = 1;
 		if(unit=='h' || unit=='d' || unit=='w' || unit=='m' || unit=='y'){
-			periodStr = periodStr.substring(0,periodStr.length()-1);
+			durationStr = durationStr.substring(0,durationStr.length()-1);
 			switch(unit){
 				case 'h': multipl = 3600; break;
 				case 'd': multipl = 86400; break;
@@ -225,11 +235,9 @@ public class TimeSerie {
 				case 'y': multipl = 31536000; break;
 			}
 		}
-		int period = Integer.parseInt(periodStr) * multipl;
-		
-		return select(step,start,period);
+		Integer duration = Integer.parseInt(durationStr) * multipl;
+		return duration;
 	}
-	
 	
 	public void exportCSV(final List<ArchivePoint> points, PrintStream out, DateFormat dateFormat, NumberFormat numberFormat) throws ArchiveInitException, IOException{
 		for (ArchivePoint point : points) {
