@@ -710,7 +710,7 @@ public abstract class Archive {
 		return step;
 	}
 
-	public Date getT0() {
+	public Date getStartTimestamp() {
 		return (startTimestamp == null ? null : new Date(startTimestamp * 1000));
 	}
 
