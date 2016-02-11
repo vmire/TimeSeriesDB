@@ -162,7 +162,7 @@ public class AverageArchive extends Archive {
 			if(stepTimestamp==null || stepTimestamp==0){
 				//Calcul du timestamp d'origine de l'archive : arrondi au step immédiatement inférieur
 				stepTimestamp = getTimestampOrigine(timestamp);
-				this.t0 = stepTimestamp;
+				this.startTimestamp = stepTimestamp;
 				logger.fine("write start timestamp");
 				//ecriture du timestamp dans l'en-tête
 				if(adf==null) adf = openFileForWriting(true);

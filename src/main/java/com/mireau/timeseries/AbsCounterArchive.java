@@ -92,7 +92,7 @@ public class AbsCounterArchive extends Archive {
 		adf.seek(pos);
 		
 		AbsCounterArchivePoint point = (AbsCounterArchivePoint)this.readPoint(adf);
-		long timestamp = t0 + (pos - HEADER1_LEN - currentStepDataLength())*step/enregLen();
+		long timestamp = startTimestamp + (pos - HEADER1_LEN - currentStepDataLength())*step/enregLen();
 		point.timestamp = timestamp;
 		this.previousPoint = point;
 		this.previousNonNullPoint = null;
@@ -192,7 +192,7 @@ public class AbsCounterArchive extends Archive {
 			if(stepTimestamp==null || stepTimestamp==0){
 				//Calcul du timestamp d'origine de l'archive : arrondi au step immédiatement inférieur
 				stepTimestamp = getTimestampOrigine(timestamp);
-				this.t0 = stepTimestamp;
+				this.startTimestamp = stepTimestamp;
 				logger.fine("write start timestamp");
 				//ecriture du timestamp dans l'en-tête
 				if(adf==null) adf = openFileForWriting(true);

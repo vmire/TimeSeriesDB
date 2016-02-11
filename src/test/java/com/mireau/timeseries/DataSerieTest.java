@@ -204,7 +204,7 @@ public class DataSerieTest {
 		Assert.assertEquals(startCal.getTimeInMillis()/1000,startTimestamp);
 		
 		//Vérification de la date en mémoire dans l'objet
-		Assert.assertEquals(startTimestamp,(long)archive15.t0);
+		Assert.assertEquals(startTimestamp,(long)archive15.startTimestamp);
 		
 		/*
 		 * Requete

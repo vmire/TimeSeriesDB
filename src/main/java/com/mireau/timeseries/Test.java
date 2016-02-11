@@ -223,7 +223,7 @@ public class Test {
 			System.out.println("archives :");
 			for (Archive archive : ts.archives) {
 				if(archive == null) continue;
-				System.out.println("   "+archive.archiveFile+" type:"+archive.getType()+" step:"+archive.step/60+"min debut:"+sdf.format(new Date(archive.t0*1000))+" len="+archive.archiveFile.length()+" last="+archive.lastTimestamp);
+				System.out.println("   "+archive.archiveFile+" type:"+archive.getType()+" step:"+archive.step/60+"min debut:"+sdf.format(new Date(archive.startTimestamp*1000))+" len="+archive.archiveFile.length()+" last="+archive.lastTimestamp);
 				if(archive instanceof AverageArchive){
 					AverageArchive a = (AverageArchive)archive;
 					System.out.println("      stepTimestamp:"+a.stepTimestamp+" stepNb:"+a.stepNb+" stepLast:"+a.stepLast+" stepMin:"+a.stepMin+" stepMax:"+a.stepMax+" stepSum:"+a.stepSum);

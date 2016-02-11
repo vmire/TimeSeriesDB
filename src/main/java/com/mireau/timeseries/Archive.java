@@ -117,9 +117,12 @@ public abstract class Archive {
 	ReadWriteLock lock;
 
 	/**
+	 * timestamp de debut de l'archive
+	 */
+	Long startTimestamp = null;
+	/**
 	 * timestamp du dernier step enregistré (terminé)
 	 */
-	Long t0 = null;
 	Long lastTimestamp = null;
 
 	/**
@@ -267,9 +270,9 @@ public abstract class Archive {
 			/*
 			 * Timestamp de debut
 			 */
-			this.t0 = adf.readLong();
+			this.startTimestamp = adf.readLong();
 			
-			logger.fine("start: "+(t0==0 ? "no start date" : sdf.format(new Date(t0*1000)))+" step:"+step);
+			logger.fine("start: "+(startTimestamp==0 ? "no start date" : sdf.format(new Date(startTimestamp*1000)))+" step:"+step);
 			
 			/*
 			 * Valeurs initialisees : timestamp + valeurs sur le step en cours
@@ -306,7 +309,7 @@ public abstract class Archive {
 				nbEnreg = (len - firstPos) / recordLen;
 	
 				// Calcul du timestamp courant
-				this.lastTimestamp = t0 + (nbEnreg - 1) * step;
+				this.lastTimestamp = startTimestamp + (nbEnreg - 1) * step;
 	
 				logger.fine(" nb steps: " + nbEnreg);
 			}
@@ -489,11 +492,12 @@ public abstract class Archive {
 		//On tronque le fichier au timestamp correspondant a la premiere valeur.
 		if(!iter.hasNext()) return;
 		RandomAccessFile raf = null;
+		long _t0 = System.currentTimeMillis();
 		lock.writeLock().lock();
 		try {
 			Entry e = iter.next();
 			raf = openFileForWriting(false);
-			if(t0!=null){
+			if(startTimestamp!=null){
 				//l'archive existe déjà avec un timestamp de début défini
 				if(lastTimestamp==null || e.timestamp < lastTimestamp + getRecordLen()){
 					//timestamp dans l'archive ou anterieur : 
@@ -531,6 +535,8 @@ public abstract class Archive {
 			//On rétabli la valeur de WriteStrategy
 			this.setWriteStartegy(writeStrategy);
 		} finally {
+			long _t1 = System.currentTimeMillis();
+			logger.info("build archive "+this.id+" :"+(_t1-_t0)+"ms");
 			if (raf != null)
 				raf.close();
 			releaseFile();
@@ -546,8 +552,8 @@ public abstract class Archive {
 	 */
 	private Long getTimestampPosition(Long timestamp){
 		long nbToStart = 0;
-		if(t0 > 0 && timestamp!=null && timestamp > t0){	//si t0==0, il n'est en fait pas défini
-			nbToStart = (timestamp - t0) / step;
+		if(startTimestamp > 0 && timestamp!=null && timestamp > startTimestamp){	//si t0==0, il n'est en fait pas défini
+			nbToStart = (timestamp - startTimestamp) / step;
 		}
 		long startIdx = nbToStart*getRecordLen() + HEADER1_LEN + currentStepDataLength();
 		return startIdx;
@@ -602,7 +608,7 @@ public abstract class Archive {
 			return result;
 
 		// On cale startTimestamp sur les valeurs de l'archive
-		startTimestamp -= (startTimestamp - t0) % step;
+		startTimestamp -= (startTimestamp - startTimestamp) % step;
 
 		long len = this.archiveFile.length();
 
@@ -682,7 +688,7 @@ public abstract class Archive {
 		else if(this.lastTimestamp != null){
 			startTimestamp = this.lastTimestamp - nb*this.step;
 		}
-		if(startTimestamp<this.t0) startTimestamp = this.t0;
+		if(startTimestamp<this.startTimestamp) startTimestamp = this.startTimestamp;
 		
 		return getPoints(startTimestamp,null);
 	}
@@ -705,7 +711,7 @@ public abstract class Archive {
 	}
 
 	public Date getT0() {
-		return (t0 == null ? null : new Date(t0 * 1000));
+		return (startTimestamp == null ? null : new Date(startTimestamp * 1000));
 	}
 
 	public Long getLastTimestamp() {
