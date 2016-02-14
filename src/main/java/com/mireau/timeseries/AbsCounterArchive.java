@@ -131,7 +131,7 @@ public class AbsCounterArchive extends Archive {
 	/**
 	 * Construit l'objet AbsCounterPoint correspondant aux valeurs enregistrées sur le step en cours
 	 */
-	protected ArchivePoint currentStepPoint(){
+	public ArchivePoint currentStepPoint(){
 		if(this.stepNb==0) return null;
 		AbsCounterArchivePoint point = new AbsCounterArchivePoint();
 		point.value = this.stepCounter;
@@ -332,5 +332,21 @@ public class AbsCounterArchive extends Archive {
 		AbsCounterArchivePoint p = new AbsCounterArchivePoint();
 		p.timestamp = timestamp;
 		return p;
+	}
+
+	public int getStepNb() {
+		return stepNb;
+	}
+
+	public Float getStepCounter() {
+		return stepCounter;
+	}
+
+	public Float getStepMax() {
+		return stepMax;
+	}
+
+	public AbsCounterArchivePoint getPreviousNonNullPoint() {
+		return previousNonNullPoint;
 	}
 }

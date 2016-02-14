@@ -120,6 +120,7 @@ public abstract class Archive {
 	 * timestamp de debut de l'archive
 	 */
 	Long startTimestamp = null;
+	
 	/**
 	 * timestamp du dernier step enregistré (terminé)
 	 */
@@ -481,7 +482,7 @@ public abstract class Archive {
 	/**
 	 * Construit l'objet ArchivePoint correspondant aux valeurs enregistrées sur le step en cours
 	 */
-	protected abstract ArchivePoint currentStepPoint();
+	public abstract ArchivePoint currentStepPoint();
 	
 	/**
 	 * @throws ArchiveInitException 
@@ -559,11 +560,7 @@ public abstract class Archive {
 		return startIdx;
 	}
 	
-	protected ArchivePoint  newEmptyPoint(Long timestamp){
-		ArchivePoint p = new ArchivePoint();
-		p.timestamp = timestamp;
-		return p;
-	}
+	abstract protected ArchivePoint  newEmptyPoint(Long timestamp);
 	
 	/**
 	 * Recherche d'une serie de point
@@ -714,8 +711,8 @@ public abstract class Archive {
 		return (startTimestamp == null ? null : new Date(startTimestamp * 1000));
 	}
 
-	public Long getLastTimestamp() {
-		return lastTimestamp;
+	public Date getLastTimestamp() {
+		return (lastTimestamp == null ? null : new Date(lastTimestamp * 1000));
 	}
 	
 	public long getFileSize(){

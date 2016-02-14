@@ -1,16 +1,35 @@
 package com.mireau.timeseries;
 
+import java.math.RoundingMode;
 import java.text.DateFormat;
+import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
+
+import org.json.simple.JSONAware;
 
 /**
  * Classe qui represente un point de l'archive
  */
-public class ArchivePoint{
+public abstract class ArchivePoint implements JSONAware{
 	Float value = null;
 	long timestamp;
+	
+	static NumberFormat jsonNumberFormater;
+	static DateFormat jsonDateFormat;
+	
+	static{
+		jsonNumberFormater = DecimalFormat.getInstance(Locale.US);	//pour avoir des points en séparateur décimal
+		jsonNumberFormater.setGroupingUsed(false);
+		jsonNumberFormater.setRoundingMode(RoundingMode.HALF_DOWN);
+		jsonNumberFormater.setMinimumFractionDigits(0);
+		jsonNumberFormater.setMaximumFractionDigits(2);
+		jsonNumberFormater.setMinimumIntegerDigits(0);
+		jsonNumberFormater.setMaximumIntegerDigits(10);
+		jsonDateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss");
+	}
 	
 	public Date getDate(){ 
 		return new Date(this.timestamp*1000);
@@ -18,15 +37,10 @@ public class ArchivePoint{
 	public Float getValue(){ return this.value; }
 	
 	
-	public String json(DateFormat dateFormat, NumberFormat numberFormater){
-		return  "{\"t\"=\""+dateFormat.format(getDate())+"\" \"v\"=\""+numberFormater.format(this.value)+"\"}";
-	}
+	abstract public String toJSONString();
+	abstract public String toCSVString();
 	
-	public String csv(DateFormat dateFormat, NumberFormat numberFormater){
-		return  dateFormat.format(getDate())
-				+";"+(this.value==null ? "" : numberFormater.format(this.value));
-	}
 	public String toString(){
-		return csv(new SimpleDateFormat("yyyyMMdd-HHmmss"), NumberFormat.getInstance());
+		return toCSVString();
 	}
 }

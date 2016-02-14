@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
+import org.json.simple.JSONAware;
+import org.json.simple.JSONObject;
+
 import com.mireau.timeseries.RawData.Entry;
 
 /**
@@ -19,7 +22,7 @@ import com.mireau.timeseries.RawData.Entry;
  * 
  * 
  */
-public class TimeSerie {
+public class TimeSerie implements JSONAware{
 	
 	Logger logger = Logger.getLogger(TimeSerie.class.getName());
 
@@ -241,7 +244,7 @@ public class TimeSerie {
 	
 	public void exportCSV(final List<ArchivePoint> points, PrintStream out, DateFormat dateFormat, NumberFormat numberFormat) throws ArchiveInitException, IOException{
 		for (ArchivePoint point : points) {
-			out.println(point.csv(dateFormat,numberFormat));
+			out.println(point.toCSVString());
 		}
 	}
 	
@@ -251,7 +254,7 @@ public class TimeSerie {
 		for (ArchivePoint point : points) {
 			if(!first) out.print(",");
 			else first = false;
-			out.println(point.json(dateFormat,numberFormat));
+			out.println(point.toJSONString());
 		}
 		out.println("]");
 	}
@@ -266,6 +269,16 @@ public class TimeSerie {
 
 	public RawData getRawDS() {
 		return rawDS;
+	}
+
+	@Override
+	public String toJSONString() {
+		JSONObject o = new JSONObject();
+		o.put("id", getId());
+		if(this.getMeta().getLabel()!=null) o.put("label", this.getMeta().getLabel());
+		if(this.getMeta().getUnit()!=null) o.put("unit", this.getMeta().getUnit());
+		if(this.getMeta().getType()!=null) o.put("type", this.getMeta().getType().toString());
+		return o.toJSONString();
 	}
 	
 	

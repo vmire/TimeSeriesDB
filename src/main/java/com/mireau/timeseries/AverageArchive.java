@@ -115,7 +115,7 @@ public class AverageArchive extends Archive {
 	 * Construit l'objet ArchivePoint correspondant aux valeurs enregistrées sur
 	 * le step en cours
 	 */
-	protected ArchivePoint currentStepPoint() {
+	public ArchivePoint currentStepPoint() {
 		if (this.stepNb == 0)
 			return null;
 		AverageArchivePoint point = new AverageArchivePoint();

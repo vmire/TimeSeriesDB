@@ -1,8 +1,8 @@
 package com.mireau.timeseries;
 
-import java.text.DateFormat;
-import java.text.NumberFormat;
 import java.util.Date;
+
+import org.json.simple.JSONObject;
 
 public class AverageArchivePoint extends ArchivePoint {
 
@@ -19,21 +19,21 @@ public class AverageArchivePoint extends ArchivePoint {
 	 * @return json
 	 */
 	@Override
-	public String json(DateFormat dateFormat, NumberFormat numberFormater){
-		return  "{"
-				+"\"t\":\""+dateFormat.format(new Date(this.timestamp*1000))+"\""
-				+", \"v\":"+(this.value==null ? null : numberFormater.format(this.value))
-				+", \"min\":"+(this.min==null ? null : numberFormater.format(this.min))
-				+", \"max\":"+(this.max==null ? null : numberFormater.format(this.max))
-				+"}";
+	public String toJSONString(){
+		JSONObject o = new JSONObject();
+		o.put("t", jsonDateFormat.format(new Date(this.timestamp*1000)));
+		o.put("v", this.value==null ? null : jsonNumberFormater.format(this.value));
+		o.put("min", this.min==null ? null : jsonNumberFormater.format(this.min));
+		o.put("max", this.max==null ? null : jsonNumberFormater.format(this.max));
+		return o.toJSONString();
 	}
 	
 	@Override
-	public String csv(DateFormat dateFormat, NumberFormat numberFormater){
-		return  dateFormat.format(new Date(this.timestamp*1000))
-				+";"+(this.value==null ? "" : numberFormater.format(this.value))
-				+";"+(this.min==null ? "" : numberFormater.format(this.min))
-				+";"+(this.max==null ? "" : numberFormater.format(this.max));
+	public String toCSVString(){
+		return  jsonDateFormat.format(new Date(this.timestamp*1000))
+				+";"+(this.value==null ? "" : jsonNumberFormater.format(this.value))
+				+";"+(this.min==null ? "" : jsonNumberFormater.format(this.min))
+				+";"+(this.max==null ? "" : jsonNumberFormater.format(this.max));
 	}
 	
 	
