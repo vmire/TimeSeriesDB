@@ -12,8 +12,9 @@ import java.util.List;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
-import org.json.simple.JSONAware;
-import org.json.simple.JSONObject;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 
 import com.mireau.timeseries.RawData.Entry;
 
@@ -22,7 +23,7 @@ import com.mireau.timeseries.RawData.Entry;
  * 
  * 
  */
-public class TimeSerie implements JSONAware{
+public class TimeSerie{
 	
 	Logger logger = Logger.getLogger(TimeSerie.class.getName());
 
@@ -198,48 +199,18 @@ public class TimeSerie implements JSONAware{
 		return rawDS.getLast();
 	}
 	
-	public List<ArchivePoint> select(int step, Long start, int duration) throws ArchiveInitException, IOException, InterruptedException{
-		Long end = null;
+	public List<ArchivePoint> selectNb(int step, Long start, int nb) throws ArchiveInitException, IOException, InterruptedException{
 		if(start==null){
-			end = new Date().getTime()/1000;
-			start = end-duration;
+			long end = new Date().getTime()/1000;
+			start = end-(nb*step);
 		}
-		else{
-			end = start+duration;
-		}
+		
 		Archive archive = this.getArchive(step);
 		if(archive==null)
 			throw new ArchiveInitException("Erreur : aucune archive avec step="+step);
 		
-		List<ArchivePoint> list = archive.getPoints(start,end);
+		List<ArchivePoint> list = archive.getPoints(start,nb);
 		return list;
-	}
-	
-	public List<ArchivePoint> select(int step, Long start, String durationStr) throws ArchiveInitException, IOException, InterruptedException{
-		Integer duration = getDurationSec(durationStr);
-		return select(step,start,duration);
-	}
-	
-	/**
-	 * Obtient une durée en seconde traduite d'une chaine qui inclue un nombre avec l'unité
-	 * @param durationStr
-	 * @return
-	 */
-	public static Integer getDurationSec(String durationStr){
-		char unit = durationStr.charAt(durationStr.length()-1);
-		int multipl = 1;
-		if(unit=='h' || unit=='d' || unit=='w' || unit=='m' || unit=='y'){
-			durationStr = durationStr.substring(0,durationStr.length()-1);
-			switch(unit){
-				case 'h': multipl = 3600; break;
-				case 'd': multipl = 86400; break;
-				case 'w': multipl = 604800; break;
-				case 'm': multipl = 2678400; break;
-				case 'y': multipl = 31536000; break;
-			}
-		}
-		Integer duration = Integer.parseInt(durationStr) * multipl;
-		return duration;
 	}
 	
 	public void exportCSV(final List<ArchivePoint> points, PrintStream out, DateFormat dateFormat, NumberFormat numberFormat) throws ArchiveInitException, IOException{
@@ -270,15 +241,14 @@ public class TimeSerie implements JSONAware{
 	public RawData getRawDS() {
 		return rawDS;
 	}
-
-	@Override
-	public String toJSONString() {
-		JSONObject o = new JSONObject();
-		o.put("id", getId());
-		if(this.getMeta().getLabel()!=null) o.put("label", this.getMeta().getLabel());
-		if(this.getMeta().getUnit()!=null) o.put("unit", this.getMeta().getUnit());
-		if(this.getMeta().getType()!=null) o.put("type", this.getMeta().getType().toString());
-		return o.toJSONString();
+	
+	public JsonObject toJson() {
+		JsonObjectBuilder item = Json.createObjectBuilder();
+		item.add("id", getId());
+		if(this.getMeta().getLabel()!=null) item.add("label", this.getMeta().getLabel());
+		if(this.getMeta().getUnit()!=null) item.add("unit", this.getMeta().getUnit());
+		if(this.getMeta().getType()!=null) item.add("type", this.getMeta().getType().toString());
+		return item.build();
 	}
 	
 	

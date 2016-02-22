@@ -133,15 +133,15 @@ public class Test {
 				else if ("get".equalsIgnoreCase(verb)) {
 					
 					if(terms.length < 3){
-						System.out.println("usage: get <step> <periode> [start timestamp]");
+						System.out.println("usage: get <step> <nb> [start timestamp]");
 						continue;
 					}
 					try{
 						int step = Integer.parseInt(terms[1]);
-						String periodStr = terms[2];
+						String nb = terms[2];
 						Long start = (terms.length>3 ? Long.parseLong(terms[3]) : null);
 						
-						List<ArchivePoint> points = ts.select(step,start,periodStr);
+						List<ArchivePoint> points = ts.selectNb(step,start,Integer.parseInt(nb));
 						
 						NumberFormat numberFormater = NumberFormat.getInstance();
 						numberFormater.setGroupingUsed(false);

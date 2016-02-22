@@ -8,12 +8,10 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-import org.json.simple.JSONAware;
-
 /**
  * Classe qui represente un point de l'archive
  */
-public abstract class ArchivePoint implements JSONAware{
+public abstract class ArchivePoint{
 	Float value = null;
 	long timestamp;
 	

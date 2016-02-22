@@ -273,7 +273,7 @@ public abstract class Archive {
 			 */
 			this.startTimestamp = adf.readLong();
 			
-			logger.fine("start: "+(startTimestamp==0 ? "no start date" : sdf.format(new Date(startTimestamp*1000)))+" step:"+step);
+			logger.fine("start: "+(this.startTimestamp==0 ? "no start date" : sdf.format(new Date(this.startTimestamp*1000)))+" step:"+step);
 			
 			/*
 			 * Valeurs initialisees : timestamp + valeurs sur le step en cours
@@ -310,7 +310,7 @@ public abstract class Archive {
 				nbEnreg = (len - firstPos) / recordLen;
 	
 				// Calcul du timestamp courant
-				this.lastTimestamp = startTimestamp + (nbEnreg - 1) * step;
+				this.lastTimestamp = this.startTimestamp + (nbEnreg - 1) * step;
 	
 				logger.fine(" nb steps: " + nbEnreg);
 			}
@@ -498,7 +498,7 @@ public abstract class Archive {
 		try {
 			Entry e = iter.next();
 			raf = openFileForWriting(false);
-			if(startTimestamp!=null){
+			if(this.startTimestamp!=null){
 				//l'archive existe déjà avec un timestamp de début défini
 				if(lastTimestamp==null || e.timestamp < lastTimestamp + getRecordLen()){
 					//timestamp dans l'archive ou anterieur : 
@@ -553,8 +553,8 @@ public abstract class Archive {
 	 */
 	private Long getTimestampPosition(Long timestamp){
 		long nbToStart = 0;
-		if(startTimestamp > 0 && timestamp!=null && timestamp > startTimestamp){	//si t0==0, il n'est en fait pas défini
-			nbToStart = (timestamp - startTimestamp) / step;
+		if(this.startTimestamp > 0 && timestamp!=null && timestamp > this.startTimestamp){	//si t0==0, il n'est en fait pas défini
+			nbToStart = (timestamp - this.startTimestamp) / step;
 		}
 		long startIdx = nbToStart*getRecordLen() + HEADER1_LEN + currentStepDataLength();
 		return startIdx;
@@ -566,16 +566,16 @@ public abstract class Archive {
 	 * Recherche d'une serie de point
 	 * Attend indéfiniment le readLock
 	 * 
-	 * @param startTimestamp
-	 * @param endTimestamp
+	 * @param start
+	 * @param nb steps
 	 * @param timeoutMillis
 	 * @return List<ArchivePoint>
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public List<ArchivePoint> getPoints(Long startTimestamp, Long endTimestamp) throws IOException, InterruptedException {
+	public List<ArchivePoint> getPoints(Long start, int nb) throws IOException, InterruptedException {
 		try {
-			return getPoints(startTimestamp, endTimestamp,-1);
+			return getPoints(start, nb,-1);
 		} catch (LockTimeoutException e) {
 			//Ca ne devrait pas arriver
 			e.printStackTrace();
@@ -587,34 +587,35 @@ public abstract class Archive {
 	 * Recherche d'une serie de point
 	 * Si le readLock ne peut être obtenu dans le délai spécifié, une LockTimeoutException est levée
 	 * 
-	 * @param startTimestamp
-	 * @param endTimestamp
+	 * @param start
+	 * @param nb steps
 	 * @param timeoutMillis
 	 * @return List<ArchivePoint>
 	 * @throws IOException
 	 * @throws InterruptedException
 	 * @throws LockTimeoutException 
 	 */
-	public List<ArchivePoint> getPoints(Long startTimestamp, Long endTimestamp, int timeoutMillis) throws IOException, InterruptedException, LockTimeoutException {
-		if (startTimestamp == null)
-			startTimestamp = (long) 0;
+	public List<ArchivePoint> getPoints(Long start, int nb, int timeoutMillis) throws IOException, InterruptedException, LockTimeoutException {
+		if(start == null){
+			long end = new Date().getTime()/1000;
+			start = end-(nb*this.step);
+		}
+		
 		List<ArchivePoint> result = new ArrayList<ArchivePoint>();
 
-		logger.fine("getPoints("+new Date(startTimestamp*1000)+","+new Date(endTimestamp*1000)+")");
-		if (startTimestamp != null && endTimestamp != null && startTimestamp >= endTimestamp)
-			return result;
-
-		// On cale startTimestamp sur les valeurs de l'archive
-		startTimestamp -= (startTimestamp - startTimestamp) % step;
-
-		long len = this.archiveFile.length();
+		logger.fine("getPoints("+new Date(start*1000)+","+nb+")");
 
 		// Positionnement sur la premiere valeur
-		Long startIdx = getTimestampPosition(startTimestamp);
+		if(this.startTimestamp <= 0 || start==null || start <= this.startTimestamp){	//si t0==0, il n'est en fait pas défini
+			return null;
+		}
+		long nbToStart = (start - this.startTimestamp) / step;
+		long startIdx = nbToStart*getRecordLen() + HEADER1_LEN + currentStepDataLength();
+		
+		// On cale start sur les valeurs de l'archive
+		start = this.startTimestamp + (nbToStart * step);
 
-		// Fin
-		if (endTimestamp == null)
-			endTimestamp = (new Date()).getTime() / 1000;
+		long len = this.archiveFile.length();
 
 		// currrentStep
 		ArchivePoint curStepPoint = this.currentStepPoint();
@@ -627,9 +628,9 @@ public abstract class Archive {
 		}
 		
 		try{
-			long cursorTimestamp = startTimestamp;
+			long cursorTimestamp = start;
 			long cursorIdx = startIdx;
-			while (cursorTimestamp < endTimestamp) {
+			for(int i=0;i<nb;i++){
 				ArchivePoint point = null;
 				if (cursorIdx > len - getRecordLen()) {
 					// le curseur n'est pas dans le fichier. Cause possible :
@@ -661,7 +662,6 @@ public abstract class Archive {
 				result.add(point);
 				cursorTimestamp += step;
 				cursorIdx += getRecordLen();
-	
 			}
 		}
 		finally{
@@ -673,21 +673,21 @@ public abstract class Archive {
 	}
 	
 	public List<ArchivePoint> getLastPoints(int nb) throws IOException, InterruptedException{
-		Long startTimestamp = null;
+		Long start = null;
 		if(nb==0) return new ArrayList<ArchivePoint>();
 		
 		ArchivePoint curStepPoint = currentStepPoint();
 		
 		if(curStepPoint!=null){
 			nb--;
-			startTimestamp = curStepPoint.timestamp - nb*this.step;
+			start = curStepPoint.timestamp - nb*this.step;
 		}
 		else if(this.lastTimestamp != null){
-			startTimestamp = this.lastTimestamp - nb*this.step;
+			start = this.lastTimestamp - nb*this.step;
 		}
-		if(startTimestamp<this.startTimestamp) startTimestamp = this.startTimestamp;
+		if(start<this.startTimestamp) start = this.startTimestamp;
 		
-		return getPoints(startTimestamp,null);
+		return getPoints(start,nb);
 	}
 
 

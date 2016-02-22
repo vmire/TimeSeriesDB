@@ -2,7 +2,8 @@ package com.mireau.timeseries;
 
 import java.util.Date;
 
-import org.json.simple.JSONObject;
+import javax.json.Json;
+import javax.json.JsonObjectBuilder;
 
 public class AverageArchivePoint extends ArchivePoint {
 
@@ -15,17 +16,15 @@ public class AverageArchivePoint extends ArchivePoint {
 	
 
 	/**
-	 * @override
 	 * @return json
 	 */
-	@Override
 	public String toJSONString(){
-		JSONObject o = new JSONObject();
-		o.put("t", jsonDateFormat.format(new Date(this.timestamp*1000)));
-		o.put("v", this.value==null ? null : jsonNumberFormater.format(this.value));
-		o.put("min", this.min==null ? null : jsonNumberFormater.format(this.min));
-		o.put("max", this.max==null ? null : jsonNumberFormater.format(this.max));
-		return o.toJSONString();
+		JsonObjectBuilder item = Json.createObjectBuilder();
+		item.add("t", jsonDateFormat.format(new Date(this.timestamp*1000)));
+		item.add("v", this.value==null ? null : jsonNumberFormater.format(this.value));
+		item.add("min", this.min==null ? null : jsonNumberFormater.format(this.min));
+		item.add("max", this.max==null ? null : jsonNumberFormater.format(this.max));
+		return item.build().toString();
 	}
 	
 	@Override
