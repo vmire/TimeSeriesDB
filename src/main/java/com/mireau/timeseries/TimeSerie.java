@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
+import javax.json.stream.JsonGenerator;
 
 import com.mireau.timeseries.RawData.Entry;
 
@@ -219,15 +220,13 @@ public class TimeSerie{
 		}
 	}
 	
-	public void exportJSON(final List<ArchivePoint> points, PrintStream out, DateFormat dateFormat, NumberFormat numberFormat) throws ArchiveInitException, IOException{
-		out.print("[");
-		boolean first = true;
+	public void toJson(final List<ArchivePoint> points, PrintStream out, DateFormat dateFormat, NumberFormat numberFormat) throws ArchiveInitException, IOException{
+		JsonGenerator g = Json.createGenerator(System.out);
+		g.writeStartArray();
 		for (ArchivePoint point : points) {
-			if(!first) out.print(",");
-			else first = false;
-			out.println(point.toJSONString());
+			g.write(point.toJson());
 		}
-		out.println("]");
+		g.writeEnd();
 	}
 
 	public String getId() {

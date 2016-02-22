@@ -3,7 +3,9 @@ package com.mireau.timeseries;
 import java.util.Date;
 
 import javax.json.Json;
+import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
+import javax.json.JsonValue;
 
 public class AbsCounterArchivePoint extends ArchivePoint {
 
@@ -18,13 +20,14 @@ public class AbsCounterArchivePoint extends ArchivePoint {
 	/**
 	 * @return json
 	 */
-	public String toJSONString(){
+	@Override
+	public JsonObject toJson(){
 		JsonObjectBuilder item = Json.createObjectBuilder();
 		item.add("t", jsonDateFormat.format(new Date(this.timestamp*1000)));
-		item.add("v", this.value==null ? null : jsonNumberFormater.format(this.value));
-		item.add("diff", this.diff==null ? null : jsonNumberFormater.format(this.diff));
-		if(this.overflow) item.add("ovf", true);
-		return item.build().toString();
+		if(this.value==null) item.add("v",JsonValue.NULL); else item.add("v", jsonNumberFormater.format(this.value));
+		if(this.diff==null) item.add("diff",JsonValue.NULL); else item.add("diff", jsonNumberFormater.format(this.diff));
+		if(this.overflow) item.add("ovf", JsonValue.TRUE);
+		return item.build();
 	}
 	
 	@Override

@@ -8,6 +8,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
+import javax.json.JsonObject;
+
 /**
  * Classe qui represente un point de l'archive
  */
@@ -35,7 +37,7 @@ public abstract class ArchivePoint{
 	public Float getValue(){ return this.value; }
 	
 	
-	abstract public String toJSONString();
+	abstract public JsonObject toJson();
 	abstract public String toCSVString();
 	
 	public String toString(){
