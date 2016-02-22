@@ -16,8 +16,9 @@ import java.util.Date;
  *        stepMax  float / 4 bytes : valeur max du step en cours
  *      Enregistrements: (9 bytes)
  *        Flags             1 byte (Most Significant Bit first)
- *            0 : defined (0:NULL 1:valeur)
+ *            0 : defined (0:NULL 1:DEFINED)
  *            1 : overflow
+ *            2 : valeur de diff lissée sur une période sans valeur
  *        Value    float / 4 bytes
  *        Diff     float / 4 bytes  (différence avec le step précédent)
  */
@@ -282,20 +283,21 @@ public class AbsCounterArchive extends Archive {
 			int stepsToSkip = (int)(stepTimestamp - lastTimestamp - step)/step;
 			logger.fine("skip "+stepsToSkip+" steps");
 			//Il y a des steps vides
+			point.diff = point.diff / stepsToSkip;
+			point.smoothEstimation = true;
 			for(int i=0;i<stepsToSkip;i++){
-				adf.writeByte(0x00);
-				for(int j=0;j<ENREG_LEN-1;j++){
-					adf.writeByte(0);
-				}
+				adf.writeByte(0x04);
+				adf.writeInt(0);
+				adf.writeFloat(point.diff);
 			}
 		}
 		
 		//On ecrit la nouvelle valeur
 		logger.fine("flush step "+sdf.format(new Date(point.timestamp*1000))+": value="+point.value);
 		int flags = 0x01;		//set first flag bit
-		if(point.overflow){
-			flags = flags | 0x02;	//set second flag bit
-		}
+		if(point.overflow)         flags = flags | 0x02;	//set second flag bit
+		if(point.smoothEstimation) flags = flags | 0x04;	//set third flag bit
+		
 		adf.writeByte(flags);
 		if(point.value==null){
 			logger.fine("null");
@@ -319,11 +321,13 @@ public class AbsCounterArchive extends Archive {
 		AbsCounterArchivePoint p = new AbsCounterArchivePoint();
 		byte flags = raf.readByte();
 		boolean definedFlag = (flags & 0x01) > 0;
-		if(definedFlag){
-			p.value = raf.readFloat();
-			p.diff = raf.readFloat();
-			p.overflow = (flags & 0x02) > 0;
-		}
+		p.overflow = (flags & 0x02) > 1;
+		p.smoothEstimation = (flags & 0x04) > 2;
+		p.value = raf.readFloat();
+		p.diff = raf.readFloat();
+		
+		if(!definedFlag) p.value = null;
+		if(!definedFlag && !p.smoothEstimation) p.diff = null;
 		return p;
 	}
 	

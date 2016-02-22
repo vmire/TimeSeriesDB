@@ -17,7 +17,7 @@ public class AbsCounterArchivePoint extends ArchivePoint {
 	
 	Float diff = null;
 	boolean overflow = false;
-	
+	boolean smoothEstimation = false;
 
 	/**
 	 * @return json
@@ -29,6 +29,7 @@ public class AbsCounterArchivePoint extends ArchivePoint {
 		if(this.value==null) item.add("v",JsonValue.NULL); else item.add("v", numberFormat.format(this.value));
 		if(this.diff==null) item.add("diff",JsonValue.NULL); else item.add("diff", numberFormat.format(this.diff));
 		if(this.overflow) item.add("ovf", JsonValue.TRUE);
+		if(this.smoothEstimation) item.add("estimation", JsonValue.TRUE);
 		return item.build();
 	}
 	
@@ -38,6 +39,7 @@ public class AbsCounterArchivePoint extends ArchivePoint {
 				+";"+(this.value==null ? "" : numberFormat.format(this.value))
 				+";"+(this.diff==null ? "" : numberFormat.format(this.diff))
 				+";"+(this.overflow ? "1":"0")
+				+";"+(this.smoothEstimation ? "1":"0")
 				;
 	}
 	
@@ -47,5 +49,7 @@ public class AbsCounterArchivePoint extends ArchivePoint {
 	public boolean isOverflow() {
 		return overflow;
 	}
-	
+	public boolean isSmoothEstimation() {
+		return smoothEstimation;
+	}
 }
