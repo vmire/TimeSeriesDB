@@ -216,7 +216,7 @@ public class TimeSerie{
 	
 	public void exportCSV(final List<ArchivePoint> points, PrintStream out, DateFormat dateFormat, NumberFormat numberFormat) throws ArchiveInitException, IOException{
 		for (ArchivePoint point : points) {
-			out.println(point.toCSVString());
+			out.println(point.toString());
 		}
 	}
 	
@@ -224,7 +224,7 @@ public class TimeSerie{
 		JsonGenerator g = Json.createGenerator(System.out);
 		g.writeStartArray();
 		for (ArchivePoint point : points) {
-			g.write(point.toJson());
+			g.write(point.toJson(dateFormat, numberFormat));
 		}
 		g.writeEnd();
 	}

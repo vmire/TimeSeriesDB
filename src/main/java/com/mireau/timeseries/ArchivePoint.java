@@ -17,19 +17,7 @@ public abstract class ArchivePoint{
 	Float value = null;
 	long timestamp;
 	
-	static NumberFormat jsonNumberFormater;
-	static DateFormat jsonDateFormat;
 	
-	static{
-		jsonNumberFormater = DecimalFormat.getInstance(Locale.US);	//pour avoir des points en séparateur décimal
-		jsonNumberFormater.setGroupingUsed(false);
-		jsonNumberFormater.setRoundingMode(RoundingMode.HALF_DOWN);
-		jsonNumberFormater.setMinimumFractionDigits(0);
-		jsonNumberFormater.setMaximumFractionDigits(2);
-		jsonNumberFormater.setMinimumIntegerDigits(0);
-		jsonNumberFormater.setMaximumIntegerDigits(10);
-		jsonDateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss");
-	}
 	
 	public Date getDate(){ 
 		return new Date(this.timestamp*1000);
@@ -37,10 +25,18 @@ public abstract class ArchivePoint{
 	public Float getValue(){ return this.value; }
 	
 	
-	abstract public JsonObject toJson();
-	abstract public String toCSVString();
+	abstract public JsonObject toJson(DateFormat dateFormat, NumberFormat numberFormat);
+	abstract public String toCsvString(DateFormat dateFormat, NumberFormat numberFormat);
 	
 	public String toString(){
-		return toCSVString();
+		NumberFormat numberFormat = DecimalFormat.getInstance(Locale.US);	//pour avoir des points en séparateur décimal;
+		DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd-HHmmss");;
+		numberFormat.setGroupingUsed(false);
+		numberFormat.setRoundingMode(RoundingMode.HALF_DOWN);
+		numberFormat.setMinimumFractionDigits(0);
+		numberFormat.setMaximumFractionDigits(2);
+		numberFormat.setMinimumIntegerDigits(0);
+		numberFormat.setMaximumIntegerDigits(10);
+		return toCsvString(dateFormat,numberFormat);
 	}
 }

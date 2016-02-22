@@ -1,5 +1,7 @@
 package com.mireau.timeseries;
 
+import java.text.DateFormat;
+import java.text.NumberFormat;
 import java.util.Date;
 
 import javax.json.Json;
@@ -21,20 +23,20 @@ public class AbsCounterArchivePoint extends ArchivePoint {
 	 * @return json
 	 */
 	@Override
-	public JsonObject toJson(){
+	public JsonObject toJson(DateFormat dateFormat, NumberFormat numberFormat){
 		JsonObjectBuilder item = Json.createObjectBuilder();
-		item.add("t", jsonDateFormat.format(new Date(this.timestamp*1000)));
-		if(this.value==null) item.add("v",JsonValue.NULL); else item.add("v", jsonNumberFormater.format(this.value));
-		if(this.diff==null) item.add("diff",JsonValue.NULL); else item.add("diff", jsonNumberFormater.format(this.diff));
+		item.add("t", dateFormat.format(new Date(this.timestamp*1000)));
+		if(this.value==null) item.add("v",JsonValue.NULL); else item.add("v", numberFormat.format(this.value));
+		if(this.diff==null) item.add("diff",JsonValue.NULL); else item.add("diff", numberFormat.format(this.diff));
 		if(this.overflow) item.add("ovf", JsonValue.TRUE);
 		return item.build();
 	}
 	
 	@Override
-	public String toCSVString(){
-		return  jsonDateFormat.format(new Date(this.timestamp*1000))
-				+";"+(this.value==null ? "" : jsonNumberFormater.format(this.value))
-				+";"+(this.diff==null ? "" : jsonNumberFormater.format(this.diff))
+	public String toCsvString(DateFormat dateFormat, NumberFormat numberFormat){
+		return  dateFormat.format(new Date(this.timestamp*1000))
+				+";"+(this.value==null ? "" : numberFormat.format(this.value))
+				+";"+(this.diff==null ? "" : numberFormat.format(this.diff))
 				+";"+(this.overflow ? "1":"0")
 				;
 	}
