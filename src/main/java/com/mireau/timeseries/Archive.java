@@ -606,7 +606,7 @@ public abstract class Archive {
 		logger.fine("getPoints("+new Date(start*1000)+","+nb+")");
 
 		// Positionnement sur la premiere valeur
-		if(this.startTimestamp <= 0 || start==null || start <= this.startTimestamp){	//si t0==0, il n'est en fait pas défini
+		if(this.startTimestamp <= 0 || start==null){	//si t0==0, il n'est en fait pas défini		//  || start <= this.startTimestamp
 			return null;
 		}
 		long nbToStart = (start - this.startTimestamp) / step;
@@ -646,7 +646,11 @@ public abstract class Archive {
 						break;
 					} else
 						point = newEmptyPoint(cursorTimestamp);
-				} else {
+				} 
+				else if(cursorIdx<0 || cursorIdx < this.HEADER1_LEN + this.currentStepDataLength()){
+					point = this.newEmptyPoint(cursorTimestamp);
+				}
+				else {
 					// Ouverture du fichier si besoin
 					if (raf == null)
 						raf = openFileForReading();
