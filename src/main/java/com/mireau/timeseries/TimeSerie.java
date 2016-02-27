@@ -201,12 +201,8 @@ public class TimeSerie{
 	}
 	
 	public List<ArchivePoint> selectNb(int step, Long start, int nb) throws ArchiveInitException, IOException, InterruptedException{
-		if(start==null){
-			long end = new Date().getTime()/1000;
-			start = end-(nb*step);
-		}
-		
 		Archive archive = this.getArchive(step);
+		
 		if(archive==null)
 			throw new ArchiveInitException("Erreur : aucune archive avec step="+step);
 		

@@ -596,9 +596,15 @@ public abstract class Archive {
 	 * @throws LockTimeoutException 
 	 */
 	public List<ArchivePoint> getPoints(Long start, int nb, int timeoutMillis) throws IOException, InterruptedException, LockTimeoutException {
+		// currrentStep
+		ArchivePoint curStepPoint = this.currentStepPoint();
+		
 		if(start == null){
 			long end = new Date().getTime()/1000;
 			start = end-(nb*this.step);
+			
+			//Si on a quelque chose dans le step courant on décale de 1 pour pouvoir l'inclure dans le résultat
+			if(curStepPoint!= null) start += this.step;
 		}
 		
 		List<ArchivePoint> result = new ArrayList<ArchivePoint>();
@@ -617,8 +623,7 @@ public abstract class Archive {
 
 		long len = this.archiveFile.length();
 
-		// currrentStep
-		ArchivePoint curStepPoint = this.currentStepPoint();
+		
 
 		RandomAccessFile raf = null;
 		
