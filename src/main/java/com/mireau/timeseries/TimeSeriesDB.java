@@ -39,7 +39,7 @@ public class TimeSeriesDB {
 					try {
 						TimeSerie ts = new TimeSerie(id,dir);
 						timeseries.put(id, ts);
-					} catch (IOException | ArchiveInitException e) {
+					} catch (IOException | TimeSerieException e) {
 						e.printStackTrace();
 					}
 					return true;
@@ -56,7 +56,7 @@ public class TimeSeriesDB {
 		return ts;
 	}
 	
-	public TimeSerie getTimeSerie(String name, boolean createIfNotExists) throws IOException, ArchiveInitException{
+	public TimeSerie getTimeSerie(String name, boolean createIfNotExists) throws IOException, TimeSerieException{
 		TimeSerie ts = getTimeSerie(name);
 		if(ts==null && createIfNotExists){
 			//Création de la nouvelle TimeSerie
@@ -66,7 +66,7 @@ public class TimeSeriesDB {
 		return ts;
 	}
 	
-	public TimeSerie createTimeSerie(String name) throws IOException, ArchiveInitException{
+	public TimeSerie createTimeSerie(String name) throws IOException, TimeSerieException{
 		TimeSerie ts = new TimeSerie(name, this.dbDirectory);
 		return ts;
 	}

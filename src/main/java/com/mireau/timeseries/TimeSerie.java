@@ -50,13 +50,19 @@ public class TimeSerie{
 	
 	
 	
-	protected TimeSerie(String id, String dir) throws IOException, ArchiveInitException{
+	protected TimeSerie(String id, String dir) throws IOException, TimeSerieException{
 		this(id,new File(dir));
 	}
 	
-	protected TimeSerie(String id, File dir) throws IOException, ArchiveInitException{
+	protected TimeSerie(String id, File dir) throws IOException, ArchiveInitException, TimeSerieException{
 		this.id = id;
 		this.directory = dir;
+		
+		//Vérification du nom
+		String regex = "[a-zA-Z0-9._-]+";
+		if(!id.matches(regex)){
+			throw new TimeSerieException("TimeSerie id contains invalid caracters (valids are: "+regex+") :"+id);
+		}
 		
 		/*
 		 * Méta-données

@@ -97,7 +97,7 @@ public class DataSerieTest {
 	
 	
 	@Test
-	public void t01_test() throws IOException, ArchiveInitException {
+	public void t01_test() throws IOException, TimeSerieException {
 		TimeSerie ts;
 		File rawFile;
 		final String TEST_SERIE_NAME = "test-db";
@@ -228,10 +228,10 @@ public class DataSerieTest {
 	/**
 	 * Test d'une serie AbsCounter
 	 * @throws IOException
-	 * @throws ArchiveInitException
+	 * @throws TimeSerieException 
 	 */
 	@Test
-	public void t02_test() throws IOException, ArchiveInitException {
+	public void t02_test() throws IOException, TimeSerieException {
 		TimeSerie ts;
 		File rawFile;
 		
