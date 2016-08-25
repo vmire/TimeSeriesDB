@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
+import javax.json.JsonValue;
 import javax.json.stream.JsonGenerator;
 
 import com.mireau.timeseries.RawData.Entry;
@@ -31,7 +32,17 @@ public class TimeSerie{
 	/** nom (identifiant) de la série */
 	private String id;
 	
+	/** noeud */
+	Node node;
 	
+	public Node getNode() {
+		return node;
+	}
+
+	public void setNode(Node node) {
+		this.node = node;
+	}
+
 	/** Meta données */
 	Meta meta;
 	
@@ -67,14 +78,14 @@ public class TimeSerie{
 		/*
 		 * Méta-données
 		 */
-		File metadataFile = new File(dir,"ts_"+id+".mts");
+		File metadataFile = new File(dir,TimeSeriesDB.FILENAME_PREFIX+id+"."+TimeSeriesDB.META_TIMESERIE_FILE_EXT);
 		meta = new Meta(metadataFile);
 		meta.readMetadata();
 		
 		/*
 		 * Raw
 		 */
-		File rawFile = new File(dir,"ts_"+id+".rts");
+		File rawFile = new File(dir,TimeSeriesDB.FILENAME_PREFIX+id+"."+TimeSeriesDB.RAW_TIMESERIE_FILE_EXT);
 		rawDS = new RawData(rawFile);
 		
 		/*
@@ -84,7 +95,7 @@ public class TimeSerie{
 		
 		//On parcours le répertoire
 		File[] files = directory.listFiles();
-		Pattern archiveFilenamePattern = Pattern.compile("ts_"+id+"_[0-9]+[_a-zA-Z]*\\.ats", Pattern.CASE_INSENSITIVE);
+		Pattern archiveFilenamePattern = Pattern.compile(TimeSeriesDB.FILENAME_PREFIX+id+"_[0-9]+[_a-zA-Z]*\\."+TimeSeriesDB.ARCHIVE_TIMESERIE_FILE_EXT, Pattern.CASE_INSENSITIVE);
 		for (File file : files) {
 			/*
 			 * Archive
@@ -131,7 +142,7 @@ public class TimeSerie{
 		Archive archive = getArchive(step);
 		if(archive!=null) throw new ArchiveInitException("l'archive existe deja");
 		
-		String filename = "ts_"+id+"_"+step+".ats";
+		String filename = TimeSeriesDB.FILENAME_PREFIX+id+"_"+step+"."+TimeSeriesDB.ARCHIVE_TIMESERIE_FILE_EXT;
 		File file = new File(directory,filename);
 		if(file.exists()) throw new ArchiveInitException("le fichier "+file.getAbsolutePath()+" existe deja");
 		if(this.getMeta().getType()==null)  throw new ArchiveInitException("type is not initialized");
@@ -243,12 +254,19 @@ public class TimeSerie{
 		return rawDS;
 	}
 	
-	public JsonObject toJson() {
+	public JsonObject toJson() throws IOException {
 		JsonObjectBuilder item = Json.createObjectBuilder();
 		item.add("id", getId());
-		if(this.getMeta().getLabel()!=null) item.add("label", this.getMeta().getLabel());
+		if(this.getMeta().getLabel()!=null) item.add("label", this.getMeta().getLabel()); 
+		else item.add("label", JsonValue.NULL);
 		if(this.getMeta().getUnit()!=null) item.add("unit", this.getMeta().getUnit());
+		else item.add("unit", JsonValue.NULL);
 		if(this.getMeta().getType()!=null) item.add("type", this.getMeta().getType().toString());
+		else item.add("type", JsonValue.NULL);
+		if(this.getRawDS().getLast() != null) item.add("lastModified", this.getRawDS().getLast().getTimestamp());
+		else item.add("lastModified", JsonValue.NULL);
+		if(this.getRawDS().getFile() !=null) item.add("rawsize", this.getRawDS().getFile().length());
+		else item.add("rawsize", JsonValue.NULL);
 		return item.build();
 	}
 	

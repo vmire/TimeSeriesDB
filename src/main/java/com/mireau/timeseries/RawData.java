@@ -161,7 +161,7 @@ public class RawData {
 				next = new Entry();
 				next.timestamp = (long)raf.readInt();
 				next.value = raf.readFloat();
-				result.add(next);
+				result.add(0,next);
 			}
 		}
 		finally{

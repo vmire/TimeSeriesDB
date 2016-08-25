@@ -652,7 +652,7 @@ public abstract class Archive {
 					} else
 						point = newEmptyPoint(cursorTimestamp);
 				} 
-				else if(cursorIdx<0 || cursorIdx < this.HEADER1_LEN + this.currentStepDataLength()){
+				else if(cursorIdx<0 || cursorIdx < Archive.HEADER1_LEN + this.currentStepDataLength()){
 					point = this.newEmptyPoint(cursorTimestamp);
 				}
 				else {
